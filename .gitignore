@@ -106,5 +106,9 @@ venv.bak/
 # Visual Studio Code files
 .vscode/
 
+# plots and outputs
+*.png
+*.data
+
 
 
