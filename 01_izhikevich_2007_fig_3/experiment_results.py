@@ -1,5 +1,5 @@
-import pickle
-import os.path
+import pickle, time, os.path
+
 
 class ExperimentResults(object):
 
@@ -17,7 +17,10 @@ class ExperimentResults(object):
 
     def _pickle(self, save_dir):
         save_dir = os.path.join(save_dir, 'trial-'+str(self.trial).rjust(3, '0'))
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
+        while not os.path.exists(save_dir):
+            if self.rank == 0:
+                os.mkdir(save_dir)
+            else:
+                time.sleep(.1)
         file_path = os.path.join(save_dir, 'rank-'+str(self.rank).rjust(3, '0')+'.data')
         pickle.dump(self, open(file_path, 'wb'))

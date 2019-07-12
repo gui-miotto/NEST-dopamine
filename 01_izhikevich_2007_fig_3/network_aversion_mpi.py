@@ -1,16 +1,17 @@
-import nest
+import nest, os
 import numpy as np
 from scipy import sparse
 from mpi4py import MPI
 from time import time
+from datetime import timedelta
 from experiment_methods import ExperimentMethods
 from experiment_results import ExperimentResults
 
 
 class Network():
-    def __init__(self, master_seed=42, A_plus_mult=2., A_minus_mult=1.5, Wmax_mult=5.):
+    def __init__(self, master_seed=400, A_plus_mult=2., A_minus_mult=1.5, Wmax_mult=4.):
 
-        self.debug = True
+        self.debug = False
 
         # Kernel parameters
         self.mseed = master_seed  # master seed
@@ -70,6 +71,7 @@ class Network():
             #'Wmin' : 0., # Default 0. # Minimal synaptic weight
             #'vt' : volt_DA[0], # Volume transmitter will be assigned later on
             }
+        self.default_data_dir = f'Aplus={A_plus_mult}_Aminus={A_minus_mult}_Wmax={Wmax_mult}'
         
         # External noise parameters
         eta = .87 # 2. # external rate relative to threshold rate
@@ -107,7 +109,7 @@ class Network():
                 'rng_seeds' : msd_range2,
                 })
     
-    def _build_network(self):
+    def build_network(self):
         self._configure_kernel()
 
         # Create all neurons
@@ -118,10 +120,10 @@ class Network():
         self.nodes['ALL'] = self.nodes['E'] + self.nodes['I']
         self.nodes['inh'] = self.nodes['I'][:self.N['inh']]
         cut = 0
-        for pop in ['S', 'A', 'B', 'exc']:  # line bellow assumes that S is the first cut (better not to change this order)
+        for pop in ['S', 'A', 'B', 'exc']: 
             self.nodes[pop] = self.nodes['E'][cut : cut+self.N[pop]]
             cut += self.N[pop]
-        self.nodes['E_wout_S'] = self.nodes['E'][self.N['S']:]
+        self.nodes['E_wout_S'] = tuple(set(self.nodes['E']) - set(self.nodes['S']))
 
         # Initiate membrane potentials randomly
         v_min, v_max = self.neu_pars['V_reset'], self.neu_pars['V_th']
@@ -161,35 +163,43 @@ class Network():
 
         # Create and connect spike detectors:
         self.spkdet = {}
-        for pop in ['S', 'A', 'B', 'exc', 'inh', 'ALL']:
+        for pop in ['S', 'A', 'B', 'exc', 'inh', 'E']:
             self.spkdet[pop] = nest.Create('spike_detector')
             nest.Connect(self.nodes[pop], self.spkdet[pop])
 
-    
-    def simulate(self, data_dir, n_trials=400, syn_scaling=True, aversion=True):
+    def simulate(self, data_dir=None, n_trials=400, syn_scaling=True, aversion=True):
         # (warning: nest.ResetNetwork wont reboot synaptic weights, 
         # we would have to do it manually or just rebuild the network)
-        self._build_network()
-        ExperimentMethods(self)._pickle(data_dir)
-        
-        warmup_duration = (1. if self.debug else 25.) * self.tau_n
+        self.build_network()
 
+        if data_dir is None:
+            data_dir = f'Aversion={aversion}_' + self.default_data_dir
+            data_dir = os.path.join('results', data_dir)
+        
+        self.n_trials = n_trials
+        warmup_duration = (1. if self.debug else 25.) * self.tau_n
         if self.rank == 0:
+            ExperimentMethods(self)._pickle(data_dir)
             A_sel, B_sel, draw = 0, 0, 0
             print(f'Initial total plastic weight: {self.initial_total_plastic_w}\n')
             print(f'Simulating warmup for {warmup_duration} ms')
             warmup_start = time()
-        
-        self._run_warmup(warmup_duration)
-
+        self.simulate_rest_state(duration=warmup_duration, reset_weights=True)
         if self.rank == 0:
-            print(f'Warmup simulated in {time() - warmup_start : .3f} seconds')
+            print(f'Warmup simulated in {time() - warmup_start : .3f} seconds\n')
+            trials_wall_clock_time = list()
 
         self.rescal_factor = 1.
         for self.trial in range(1, n_trials+1):
 
-            print_r0(f'Simulating trial {self.trial} of {n_trials}:')
+            if self.rank == 0:
+                print(f'Simulating trial {self.trial} of {n_trials}:')
+                trial_start = time()
             A_minus_B = self._simulate_one_trial(aversion=aversion)
+            if self.rank == 0:
+                wall_clock_time = time() - trial_start
+                trials_wall_clock_time.append(wall_clock_time)
+                
 
             # TODO: delelte this, once debuged
             #A_minus_B, n_spikes_DA = self._simulate_one_trial(aversion=aversion)
@@ -210,9 +220,9 @@ class Network():
 
             # Weight rescaling:
             if(syn_scaling):
-                old_total_weight, new_weights, self.rescal_factor = self._synaptic_rescaling(syn_scaling)
+                old_total_weight, new_weights, self.rescal_factor = self._synaptic_rescaling()
                 print_r0('End-of-trial total weight:', old_total_weight)
-                print_r0('scaling it by a fator of', self.rescal_factor)
+                print_r0('scaling it by a factor of', self.rescal_factor)
             else:
                 new_weights = nest.GetStatus(self.plastic_syns, 'weight')
             self.EE_w_hist = np.histogram(new_weights, bins=20, range=(0., self.DA_pars['Wmax']))
@@ -225,9 +235,16 @@ class Network():
 
             if self.rank == 0:
                 print(f'Parcial results (out of {self.trial} trials):')
-                print(f'{A_sel} correct selections ({A_sel*100./self.trial}%)')
-                print(f'{B_sel} wrong selections ({B_sel*100./self.trial}%)')
-                print(f'{draw} draws ({draw*100./self.trial}%)\n')
+                print(f'{A_sel} correct selections ({(A_sel*100./self.trial):.2f}%)')
+                print(f'{B_sel} wrong selections ({(B_sel*100./self.trial):.2f}%)')
+                print(f'{draw} draws ({(draw*100./self.trial):.2f}%)')
+                #print('----------------------------------------------------')
+                print(f'Elapsed real time: {wall_clock_time:.1f} seconds')
+                mean_wct = np.mean(trials_wall_clock_time)
+                print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')
+                remaining_wct = round(mean_wct * (n_trials - self.trial))
+                print(f'Expected remaining time: {timedelta(seconds=remaining_wct)}\n')
+                                
             
             ExperimentResults(self)._pickle(data_dir)
 
@@ -286,8 +303,8 @@ class Network():
                     np.arange(curr_time, delivery_time - 1.5 * self.dt, self.dt),  # 1.5 multiplication for numerical stability
                     np.arange(delivery_time, end_of_trial, self.dt)
                 ))
-            DA_spike_times = np.round(DA_spike_times, decimals=1)
-            nest.SetStatus(self.nodes['DA'], params={'spike_times' : DA_spike_times})
+        DA_spike_times = np.round(DA_spike_times, decimals=1)
+        nest.SetStatus(self.nodes['DA'], params={'spike_times' : DA_spike_times})
 
         # Simulate the rest of the trial
         nest.Simulate(self.trial_duration - self.eval_time_window)
@@ -297,8 +314,8 @@ class Network():
         for pop in ['S', 'A', 'B', 'exc', 'inh']:
             self.events[pop] = nest.GetStatus(self.spkdet[pop], 'events')[0]
             nest.SetStatus(self.spkdet[pop], {'n_events' : 0 })
-        self.EE_fr_hist = self._EE_fr_histogram(nest.GetStatus(self.spkdet['ALL'], 'events')[0])
-        nest.SetStatus(self.spkdet['ALL'], {'n_events' : 0 })
+        self.EE_fr_hist = self._EE_fr_histogram(nest.GetStatus(self.spkdet['E'], 'events')[0])
+        nest.SetStatus(self.spkdet['E'], {'n_events' : 0 })
 
         # TODO: delete DA spike detector once we know that this is bug free        
         #n_events_DA = nest.GetStatus(self.spkdet['DA'], 'n_events')[0]
@@ -306,32 +323,43 @@ class Network():
 
         return A_minus_B #, n_events_DA
 
-    def _synaptic_rescaling(self, rescal=True):
-        
-        old_weights = nest.GetStatus(self.plastic_syns, 'weight')
-        old_total_weight = np.sum(old_weights, dtype='f')
+    def simulate_rest_state(self, duration=100., reset_weights=True):
+        # DA baseline and no stimulus
+        curr_time = nest.GetKernelStatus()['time']
+        DA_spike_times = np.arange(
+            curr_time + self.dt, 
+            curr_time + self.dt + duration, 
+            self.dt)
+        DA_spike_times = np.round(DA_spike_times, decimals=1)
+        nest.SetStatus(self.nodes['DA'], params={'spike_times' : DA_spike_times})
+        nest.Simulate(duration)
+        syn_rescal_factor, _, _, _ = self._get_weight_scaling_factor()
+        #print(nest.GetStatus(self.spkdet['DA'], 'n_events')) # for debug
+        #for pop in ['S', 'A', 'B', 'exc', 'inh', 'E', 'DA']:
+        for pop in ['S', 'A', 'B', 'exc', 'inh', 'E']:
+            nest.SetStatus(self.spkdet[pop], {'n_events' : 0 })
+        if reset_weights:
+            nest.SetStatus(self.plastic_syns, params='weight', val=self.J['E'])
+        return syn_rescal_factor
+
+    def _synaptic_rescaling(self):
+        syn_rescal_factor, _, old_total_weight, new_weights = self._get_weight_scaling_factor()
+        nest.SetStatus(self.plastic_syns, params='weight', val=new_weights)
+        return old_total_weight, new_weights, syn_rescal_factor
+    
+    def _get_weight_scaling_factor(self):
+        weights = nest.GetStatus(self.plastic_syns, 'weight')
+        total_weight = np.sum(weights, dtype='f')
         recvbuf = np.empty(self.n_procs, dtype='f') if self.rank == 0 else None
-        self.mpi_comm.Gather(old_total_weight, recvbuf, root=0)
+        self.mpi_comm.Gather(total_weight, recvbuf, root=0)
         if self.rank == 0:
-            old_total_weight = np.sum(recvbuf)
-            syn_rescal_factor = self.initial_total_plastic_w / old_total_weight
+            total_weight = np.sum(recvbuf)
+            syn_rescal_factor = self.initial_total_plastic_w / total_weight
         else:
             syn_rescal_factor = None
         syn_rescal_factor = self.mpi_comm.bcast(syn_rescal_factor, root=0)
-
-        new_weights = np.array(old_weights) * syn_rescal_factor
-        nest.SetStatus(self.plastic_syns, params='weight', val=new_weights)
-        
-        return old_total_weight, new_weights, syn_rescal_factor
-
-    def _run_warmup(self, warmup_duration=100.):
-        DA_spike_times = np.arange(self.dt, warmup_duration + self.dt, self.dt)
-        DA_spike_times = np.round(DA_spike_times, decimals=1)
-        nest.SetStatus(self.nodes['DA'], params={'spike_times' : DA_spike_times})
-        nest.Simulate(warmup_duration)
-        nest.SetStatus(self.plastic_syns, params='weight', val=self.J['E'])
-        for pop in ['S', 'A', 'B', 'exc', 'inh', 'ALL']:
-            nest.SetStatus(self.spkdet[pop], {'n_events' : 0 })
+        scaled_weights = np.array(weights) * syn_rescal_factor
+        return syn_rescal_factor, weights, total_weight, scaled_weights
 
     def _EE_fr_histogram(self, events):
         snds = events['senders']
@@ -344,6 +372,33 @@ class Network():
         return np.histogram(frs, bins=20, range=(0, 10.))
 
     def _E_pop_connectivity_matrix(self):
+        beg = time()
+        cnnmat = self._E_pop_connectivity_matrix_old()
+        print(time() - beg)
+        quit()
+        return cnnmat
+    
+    def _E_pop_connectivity_matrix(self):
+        # First create a map from global ids to matrices index
+        prev_max_gid = 0
+        gids, inds = list(), dict()
+        for pop in ['S', 'A', 'B', 'exc']:
+            gids += self.nodes[pop]
+            gid = np.array(self.nodes[pop])
+            ind = gid - np.min(gid) + prev_max_gid + 1
+            for g, i in zip(gid, ind):
+                inds[g] = i
+            prev_max_gid = np.max(gid)
+        # Then calculate the matrix itself
+        cnn_matrix = np.zeros((len(gids), len(gids)))
+        for cnn in nest.GetConnections(gids, gids):
+            pre = nest.GetStatus([cnn], 'source')[0]
+            post = nest.GetStatus([cnn], 'target')[0]
+            weights = nest.GetStatus([cnn], 'weight')
+            cnn_matrix[inds[pre]-1, inds[post]-1] += np.sum(weights)
+        return sparse.coo_matrix(cnn_matrix)
+    
+    def _E_pop_connectivity_matrix_old(self):
         cnn_matrix = np.zeros((self.N['cnn_mat'], self.N['cnn_mat']))
         n_pre_ind = -1
         for pop_pre in ['S', 'A', 'B', 'exc']:
