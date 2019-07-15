@@ -11,7 +11,7 @@ from experiment_results import ExperimentResults
 class Network():
     def __init__(self, master_seed=400, A_plus_mult=2., A_minus_mult=1.5, Wmax_mult=4.):
 
-        self.debug = False
+        self.debug = True
 
         # Kernel parameters
         self.mseed = master_seed  # master seed
@@ -62,7 +62,7 @@ class Network():
             'delay': self.delay, # Default 1.; Synaptic delay
             'tau_n' : self.tau_n, # Default 200.; Time constant of dopaminergic trace in ms
             'b' : 1. / self.dt, # Default 0.; Dopaminergic baseline concentration
-            'n' : 1. / self.dt + 1.5 / self.tau_n, # Default 0.; Initial dopamine concentration
+            'n' : 1. / self.dt + 2.5 / self.tau_n, # Default 0.; Initial dopamine concentration
             'A_plus' : A_plus,  # Default 1.; Amplitude of weight change for facilitation
             'A_minus' : A_minus,  # Default 1.5; Amplitude of weight change for depression
             'Wmax' : self.J['E'] * Wmax_mult, # Maximal synaptic weight  
@@ -134,8 +134,10 @@ class Network():
 
         # Create and connect volume transmiter
         self.nodes['DA'] = nest.Create('spike_generator')
+        workaround_parrot = nest.Create('parrot_neuron') # because conns between spike_gens and vol_trans are currently not allowed
         volt_DA = nest.Create("volume_transmitter")
-        nest.Connect(self.nodes['DA'], volt_DA, syn_spec={'delay' : self.dt})
+        nest.Connect(self.nodes['DA'], workaround_parrot, syn_spec={'delay' : self.dt})
+        nest.Connect(workaround_parrot, volt_DA, syn_spec={'delay' : self.dt})
         self.DA_pars['vt'] = volt_DA[0]
 
         # Main population connections:
@@ -238,7 +240,6 @@ class Network():
                 print(f'{A_sel} correct selections ({(A_sel*100./self.trial):.2f}%)')
                 print(f'{B_sel} wrong selections ({(B_sel*100./self.trial):.2f}%)')
                 print(f'{draw} draws ({(draw*100./self.trial):.2f}%)')
-                #print('----------------------------------------------------')
                 print(f'Elapsed real time: {wall_clock_time:.1f} seconds')
                 mean_wct = np.mean(trials_wall_clock_time)
                 print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')

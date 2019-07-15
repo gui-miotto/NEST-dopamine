@@ -6,7 +6,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from experiment_methods import ExperimentMethods
 from glob import glob
 
-exp_dir = 'Aplus=1.0_Aminus=2.0_Wmax=4.0/'
+exp_dir = 'test2/'
 figs_dir = methods_file_path = os.path.join(exp_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)
