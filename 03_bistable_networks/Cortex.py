@@ -11,12 +11,13 @@ class Cortex(BaseBrainStructure):
         self.N['I'] = int(2500 * self.scale)  # number of inhibitory neurons
         self.N['E'] = 4 * self.N['I']  # number of excitatory neurons
         self.N['E_rec'] = self.N['I_rec'] = 500  # number of neurons to record from
+        self.N['L'] = self.N['H'] = 500  # subpopulations associated to stimuli
 
         # Connectivity
         epsilon = 0.1  # connection probability
         self.C = {pop : int(epsilon * n) for pop, n in self.N.items()} # num synapses per neuron
 
-        # synapse parameters
+        # Synapse parameters
         g = 8.  # ratio inhibitory weight/excitatory weight
         self.J = {'E' : 20.} # amplitude of excitatory postsynaptic current
         self.J['I'] = -g * self.J['E']  # amplitude of inhibitory postsynaptic current
@@ -28,14 +29,28 @@ class Cortex(BaseBrainStructure):
         nu_ex = eta * nu_th
         self.bg_rate = 1000.0 * nu_ex * self.C['E']
 
+        # Stimulation protocol
+        self.stim_duration = 10. #3.  #ms
+        self.stim_intensity = 300.  #pF
+
+
     def build_local_network(self):
-        # Create neurons and connect them to spike detectors
+        # Create neurons
         for pop in ['E', 'I']:
-            sd_id = pop + '_rec'
             self.neurons[pop] = nest.Create('default_neuron', self.N[pop])
-            self.spkdets[sd_id] = nest.Create('spike_detector')
-            nest.Connect(self.neurons[pop][:self.N[sd_id]], self.spkdets[sd_id])
+        
+        # Sample subpopulations
+        cut = 0
+        for pop in ['L', 'H', 'E_rec']:
+            self.neurons[pop] = self.neurons['E'][cut:cut+self.N[pop]]
+            cut += self.N[pop]  
+        self.neurons['I_rec'] = self.neurons['I'][:self.N['I_rec']]
         self.neurons['ALL'] = self.neurons['E'] + self.neurons['I']
+
+        # Connect subpopulations to spike detectors
+        for pop in ['L', 'H', 'E_rec', 'I_rec']:
+            self.spkdets[pop] = nest.Create('spike_detector')
+            nest.Connect(self.neurons[pop], self.spkdets[pop])
 
         # Connect neurons with each other
         for pop in ['E', 'I']:
@@ -50,3 +65,17 @@ class Cortex(BaseBrainStructure):
 
         # initiate membrane potentials
         self.initiate_membrane_potentials_randomly()
+
+        # Create and connect sensory stimulus
+        self.stimulus = dict()
+        for pop in ['L', 'H']:
+            self.stimulus[pop] = nest.Create('step_current_generator')
+            nest.Connect(self.stimulus[pop], self.neurons[pop])
+
+    def stimulate_subpopulation(self, spop, delay=0.):
+        stim_onset = nest.GetKernelStatus()['time'] + delay
+        nest.SetStatus(self.stimulus[spop], params={
+            'amplitude_times' : [stim_onset, stim_onset + self.stim_duration],
+            'amplitude_values' : [self.stim_intensity, 0.],
+        })
+

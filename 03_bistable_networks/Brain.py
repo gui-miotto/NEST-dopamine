@@ -27,7 +27,7 @@ class Brain(BaseBrainStructure):
         
         # Synapse parameters
         self.syn_delay = 1.5  # synaptic delay in ms
-        self.ctx_str_cnn = {'rule': 'fixed_indegree', 'indegree': 1000}  # cortical axons per MSN
+        self.ctx_str_indegree = 1000 # cortical boutons per MSN
         
         # Kernel parameters
         self.dt = .1
@@ -35,15 +35,15 @@ class Brain(BaseBrainStructure):
         self.kernel_pars = {
             'print_time' : False,
             'resolution' : self.dt,
-            'local_num_threads' : 4,
+            'local_num_threads' : 12,
             'grng_seed' : master_seed,
             }
         
         # Define structures in the Brain
-        self.structures = {
-            'cortex'    : Cortex(neu_params=self.neuron_params, scale=self.scale),
-            'striatum'  : Striatum(scale=self.scale),
-            }
+        self.cortex = Cortex(neu_params=self.neuron_params, scale=self.scale)
+        self.striatum = Striatum(scale=self.scale)
+        self.structures = [self.cortex, self.striatum]
+
 
     def build_local_network(self):
         # Configure kernel and threads
@@ -53,20 +53,17 @@ class Brain(BaseBrainStructure):
         nest.CopyModel('iaf_psc_alpha', 'default_neuron', self.neuron_params)
         nest.CopyModel('static_synapse', 'default_synapse', {'delay': self.syn_delay})
 
-        # Create neurons from cortex and striatum
-        for _, struct in self.structures.items():
+        # Create neurons from structures of the brain
+        for struct in self.structures:
             struct.build_local_network()
         
         # Connect cortex to striatum
-        nest.CopyModel('default_synapse', 'cortex_E_syn_A', {'weight': 20.})
-        nest.CopyModel('default_synapse', 'cortex_E_syn_B', {'weight': 20.})
-        for pop in ['A', 'B']:
-            nest.Connect(
-                self.structures['cortex'].neurons['E'],
-                self.structures['striatum'].neurons[pop],
-                self.ctx_str_cnn,
-                'cortex_E_syn_'+pop,
-                )
+        nest.Connect(
+            self.cortex.neurons['E'], 
+            self.striatum.neurons['ALL'],
+            {'rule': 'fixed_indegree', 'indegree': self.ctx_str_indegree},
+            'cortex_E_synapse'
+            )
         
     def _configure_kernel(self):
         # Threads and MPI processes
@@ -88,34 +85,49 @@ class Brain(BaseBrainStructure):
         nest.set_verbosity(self.verbosity)
         nest.SetKernelStatus(self.kernel_pars)
     
+    def TEST_reinforce(self, sp_stim, sp_act):
+        source = self.cortex.neurons[sp_stim]
+        target = self.striatum.neurons[sp_act]
+        cnns = nest.GetConnections(source, target)
+        nest.SetStatus(cnns, params='weight', val=40.)
+
     def Simulate(self):
-        nest.Simulate(30000.)
-        cortex_events = nest.GetStatus(self.structures['cortex'].spkdets['E_rec'], 'events')[0]
-        str_A_events = nest.GetStatus(self.structures['striatum'].spkdets['A'], 'events')[0]
-        str_B_events = nest.GetStatus(self.structures['striatum'].spkdets['B'], 'events')[0]
+        self.TEST_reinforce('L', 'A')
+        self.TEST_reinforce('H', 'B')
+        self.cortex.stimulate_subpopulation('L', 10000.)
+        
+        nest.Simulate(20000.)
+        cortex_events = nest.GetStatus(self.cortex.spkdets['L'], 'events')[0]
+        cortex_events_2 = nest.GetStatus(self.cortex.spkdets['E_rec'], 'events')[0]
+        str_A_events = nest.GetStatus(self.striatum.spkdets['A'], 'events')[0]
+        str_B_events = nest.GetStatus(self.striatum.spkdets['B'], 'events')[0]
+        
+        plt.style.use('ggplot')
+        fig, axes = plt.subplots(4, 1, sharex=True, figsize=(14, 14))
+        fig.suptitle('w = ' + str(self.striatum.w), size=16., weight='bold')
+        
+        axes[0].set_title('Cortex L')
+        axes[0].scatter(cortex_events['times']/1000., cortex_events['senders'], marker='.', s=3)
+
+        axes[1].set_title('Cortex control')
+        axes[1].scatter(cortex_events_2['times']/1000., cortex_events_2['senders'], marker='.', s=3)
+        
+        str_A_sample = self.striatum.neurons['A'][:500]
+        strA_snd, strA_t = utils.get_raster_data(str_A_events, str_A_sample)
+        axes[2].set_title('Striatum (sub-network A)')
+        axes[2].scatter(strA_t/1000., strA_snd - np.min(strA_snd), marker='.', s=3)
+        
+        str_B_sample = self.striatum.neurons['B'][:500]
+        strB_snd, strB_t = utils.get_raster_data(str_B_events, str_B_sample)
+        axes[3].set_title('Striatum (sub-network B)')
+        axes[3].scatter(strB_t/1000., strB_snd - np.min(strB_snd), marker='.', s=3)
+        axes[3].set_xlabel('time (s)')
+        
+        plt.show()
+
 
         #print('\n', cortex_events, cortex_events/self.structures['cortex'].N['E_rec'] / t)
         #print(str_A_events, str_A_events / self.structures['striatum'].N['A'] / t)
         #print(str_B_events, str_B_events / self.structures['striatum'].N['B'] / t)
         #ratio =  str_A_events/str_B_events
         #print('ratio', ratio)
-        
-        plt.style.use('ggplot')
-        fig, axes = plt.subplots(3, 1, sharex=True, figsize=(18, 8))
-        fig.suptitle('w = ' + str(self.structures['striatum'].w), size=16., weight='bold')
-        
-        axes[0].set_title('Cortex')
-        axes[0].scatter(cortex_events['times']/1000., cortex_events['senders'], marker='.', s=3)
-        
-        str_A_sample = self.structures['striatum'].neurons['A'][:500]
-        strA_snd, strA_t = utils.get_raster_data(str_A_events, str_A_sample)
-        axes[1].set_title('Striatum (sub-network A)')
-        axes[1].scatter(strA_t/1000., strA_snd - np.min(strA_snd), marker='.', s=3)
-        
-        str_B_sample = self.structures['striatum'].neurons['B'][:500]
-        strB_snd, strB_t = utils.get_raster_data(str_B_events, str_B_sample)
-        axes[2].set_title('Striatum (sub-network B)')
-        axes[2].scatter(strB_t/1000., strB_snd - np.min(strB_snd), marker='.', s=3)
-        axes[2].set_xlabel('time (s)')
-        
-        plt.show()
