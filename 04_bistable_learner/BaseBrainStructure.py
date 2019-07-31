@@ -7,7 +7,7 @@ class BaseBrainStructure(object):
     def py_rngs(self):
         return type(self)._py_rngs
     
-    def __init__(self, scale=None):
+    def __init__(self, scale=1):
         self.scale = scale  #TODO: make it static?
         self.N = dict()  # Number of neurons in each subpopulation
         self.neurons = dict() # Neuron handles for each subpopulation
