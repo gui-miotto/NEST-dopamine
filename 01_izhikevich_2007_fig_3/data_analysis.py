@@ -7,7 +7,7 @@ from experiment_methods import ExperimentMethods
 from glob import glob
 
 exp_dir = 'test2/'
-figs_dir = methods_file_path = os.path.join(exp_dir, 'plots')
+figs_dir = os.path.join(exp_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)
 

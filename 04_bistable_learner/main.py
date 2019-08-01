@@ -1,7 +1,13 @@
-from Brain import Brain
+from Experiment import Experiment
 import numpy as np
 
-ratios = []
+
+
+exp = Experiment()
+exp.train_brain(400)
+
+
+"""ratios = []
 for seed in range(10):
     seed += 18
     print(seed)
@@ -10,4 +16,4 @@ for seed in range(10):
     brain.build_local_network()
     #print('Simulating')
     ratios.append(brain.Simulate())
-print(np.mean(ratios), np.std(ratios))
+print(np.mean(ratios), np.std(ratios))"""

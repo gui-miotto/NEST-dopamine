@@ -1,8 +1,9 @@
 import nest
 import numpy as np
-from BaseBrainStructure import BaseBrainStructure
+import BrainStructures as BS
 
-class VTA(BaseBrainStructure):
+
+class VTA(BS.BaseBrainStructure):
     def __init__(self, dt, J_E, syn_delay, **args):
         super().__init__(**args)
         
@@ -10,8 +11,8 @@ class VTA(BaseBrainStructure):
         self.N['ALL'] = 1  # Number of neurons. No need to scale here
 
         # Dopamine modulation parameters
-        A_plus_mult = 2.
-        Wmax_mult = 4.
+        A_plus_mult = .01  #TODO: clean up this mess
+        Wmax_mult = 5.
         A_minus_mult = 1.5
 
         self.J = J_E
@@ -51,7 +52,7 @@ class VTA(BaseBrainStructure):
         nest.CopyModel('stdp_dopamine_synapse', 'corticostriatal_synapse', self.DA_pars)
 
 
-    def program_drive(self, length, drive_type='baseline', delay=None):
+    def set_drive(self, length, drive_type='baseline', delay=None):
         drive_types = ['baseline', 'rewarding', 'aversive']
         if drive_type not in drive_types:
             raise ValueError('drive_type must one of those:', drive_types)

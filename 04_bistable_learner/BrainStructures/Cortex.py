@@ -1,8 +1,8 @@
 import math, nest
-from BaseBrainStructure import BaseBrainStructure
+import BrainStructures as BS
 
 
-class Cortex(BaseBrainStructure):
+class Cortex(BS.BaseBrainStructure):
     
     def __init__(self, neu_params, J_E, **args):
         super().__init__(**args)
@@ -11,7 +11,8 @@ class Cortex(BaseBrainStructure):
         self.N['I'] = int(2500 * self.scale)  # number of inhibitory neurons
         self.N['E'] = 4 * self.N['I']  # number of excitatory neurons
         self.N['E_rec'] = self.N['I_rec'] = 500  # number of neurons to record from
-        self.N['L'] = self.N['H'] = 500  # subpopulations associated to stimuli
+        self.N['low'] = self.N['high'] = 500  # subpopulations associated to stimuli
+        self.N['E_no_S'] = self.N['E'] - self.N['low'] - self.N['high'] 
 
         # Connectivity
         epsilon = .1  # connection probability
@@ -41,14 +42,16 @@ class Cortex(BaseBrainStructure):
         
         # Sample subpopulations
         cut = 0
-        for pop in ['L', 'H', 'E_rec']:
+        for pop in ['low', 'high', 'E_rec']:
             self.neurons[pop] = self.neurons['E'][cut:cut+self.N[pop]]
             cut += self.N[pop]  
         self.neurons['I_rec'] = self.neurons['I'][:self.N['I_rec']]
+        self.neurons['E_no_S'] = tuple(
+            set(self.neurons['E']) - set(self.neurons['low']) - set(self.neurons['high']))
         self.neurons['ALL'] = self.neurons['E'] + self.neurons['I']
 
         # Connect subpopulations to spike detectors
-        for pop in ['L', 'H', 'E_rec', 'I_rec']:
+        for pop in ['low', 'high', 'E_rec', 'I_rec']:
             self.spkdets[pop] = nest.Create('spike_detector')
             nest.Connect(self.neurons[pop], self.spkdets[pop])
 
@@ -68,7 +71,7 @@ class Cortex(BaseBrainStructure):
 
         # Create and connect sensory stimulus
         self.stimulus = dict()
-        for pop in ['L', 'H']:
+        for pop in ['low', 'high']:
             self.stimulus[pop] = nest.Create('step_current_generator')
             nest.Connect(self.stimulus[pop], self.neurons[pop])
 
