@@ -1,8 +1,10 @@
 import os
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator, FormatStrFormatter
 import DataIO as DIO
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator, FormatStrFormatter
+from itertools import product
+
 
 def get_raster_data(events, gids=None, shift_senders=False, shift_times=False, tmin=None, tmax=None):
     senders = events['senders']
@@ -66,6 +68,26 @@ def build_trial_plots(figs_dir, data):
             plt.scatter(events['times'] / 1000., events['senders'], marker='.', s=5., label=pop)
         plt.legend(loc='upper right')
         plt.xlabel('time (s)')
+
+        # Connectivity matrix
+        plt.subplot(3, 4, 12)
+        plt.title('Connectivity matrix')
+        source = ['low', 'high', 'E_rec']
+        target = ['left', 'right']
+        cnn_matrix = data.weights_mean[trial].loc[source, target].to_numpy(dtype ='float32').T
+        #plt.imshow(cnn_matrix, cmap=plt.get_cmap('hot'), origin='lower', vmin=0., vmax=data.wmax)
+        plt.imshow(cnn_matrix, origin='lower', vmin=0., vmax=data.wmax) #TODO decide which is the best cmap to use now
+        padx, pady = 10, '\n\n'
+        plt.xticks(
+            [.5, 1.5, 2.5], 
+            ('low'.ljust(padx), 'high'.ljust(padx), 'E_rec'.ljust(padx)), 
+            ha='right')
+        plt.yticks([.5, 1.5], (pady + 'left', pady + 'right'), va='top')
+        plt.xlabel('cortical sources')
+        plt.ylabel('striatal targets')
+    
+
+
         
         # Save figure
         fig_file = 'trial_' + trial_num_str + '.png'

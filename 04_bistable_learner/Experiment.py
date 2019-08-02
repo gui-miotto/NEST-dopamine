@@ -55,7 +55,9 @@ class Experiment():
             Directory where the outputs will be saved. Existing files will be overwritten. By 
             default 'temp'
         """
+        # Some handy variables
         rank0 = self.mpi_rank == 0
+        color = {'red' : '\033[91m', 'green' : '\033[92m', 'none' : '\033[0m'}
 
         # Create the whole neural network
         self.brain.build_local_network()
@@ -94,7 +96,6 @@ class Experiment():
                 _, old_total_weight, _ = self.brain.get_weight_scaling_factor()
 
             # Store experiment results on file(s):
-            # TODO?: connectivity matrix?
             self.brain.read_reset_spike_detectors()
             self.brain.read_synaptic_weights()
             DIO.ExperimentResults(self).write(save_dir)
@@ -105,7 +106,10 @@ class Experiment():
                 print(f'End-of-trial total weight: {old_total_weight:,}')
                 if syn_scaling:
                     print(f'scaled by a factor of {self.brain.syn_rescal_factor_:.4f}')
-                print('Correct action?', self.success_)
+                if self.success_:
+                    print(f'{color["green"]}Correct action{color["none"]}')
+                else:
+                    print(f'{color["red"]}Wrong action{color["none"]}')
                 print(f'{successes} correct actions so far ({(successes*100./self.trial_):.2f}%)')
                 print(f'Elapsed time: {wall_clock_time:.1f} seconds')
                 mean_wct = np.mean(trials_wall_clock_time)

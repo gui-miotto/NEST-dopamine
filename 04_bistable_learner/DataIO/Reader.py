@@ -70,6 +70,7 @@ class Reader():
         EM0 = pickle.load(open(m0_file_path, 'rb'))
         self.neurons = EM0.neurons
         self.eval_time_window = EM0.eval_time_window
+        self.wmax = EM0.wmax
 
         #And then we loop through the different MPI processes outputs
         methods_paths = os.path.join(exp_dir, 'methods-rank-*.data')

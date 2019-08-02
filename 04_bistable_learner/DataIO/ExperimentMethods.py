@@ -7,6 +7,7 @@ class ExperimentMethods():
         self.rank = exp.mpi_rank
         self.weights_count = exp.brain.weights_count
         self.eval_time_window = exp.eval_time_window
+        self.wmax = exp.brain.vta.DA_pars['Wmax']
         self.neurons = {
             'E_rec' : exp.brain.cortex.neurons['E_rec'],
             'low' : exp.brain.cortex.neurons['low'],
