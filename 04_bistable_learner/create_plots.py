@@ -25,6 +25,8 @@ def get_raster_data(events, gids=None, shift_senders=False, shift_times=False, t
 
 def build_trial_plots(figs_dir, data):
     for trial in range(data.num_of_trials):
+        print('Plotting trial', trial)
+        
         # Create figure
         plt.style.use('ggplot')
         fig = plt.figure(figsize=(15., 9.))
@@ -72,6 +74,8 @@ def build_trial_plots(figs_dir, data):
         plt.close(fig)
 
 def build_experiment_plot(figs_dir, data):
+    print('Plotting experiment overview')
+
     # Create figure
     plt.style.use('ggplot')
     fig = plt.figure(figsize=(15., 9.))
@@ -79,13 +83,25 @@ def build_experiment_plot(figs_dir, data):
     plt.suptitle('Experiment overview', size=16., weight='normal')
     trials = range(1, data.num_of_trials+1)
 
-    # decision period raster plot
+    # Difference on decision spikes counts
     plt.subplot(3,4,(1, 2))
     plt.title('Decision spikes difference')
     plt.plot(trials, np.abs(data.lminusr))
     plt.xlabel('trials')
 
-    # mean weight between stimulus and actions
+    # Synaptic scaling factors
+    plt.subplot(3,4,(5, 6))
+    plt.title('Synaptic scaling factor')
+    plt.plot(trials, data.syn_rescal_factor)
+    reg_line = np.poly1d(np.polyfit(trials, data.syn_rescal_factor, 1))
+    plt.plot(trials, reg_line(trials), label='lin reg')
+    plt.legend()
+    plt.ylim(.8, 1.2)
+    plt.xlabel('trials')
+    plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
+
+
+    # Mean weight between stimulus and actions
     def pop_to_pop_weight_plot(target, position):
         plt.subplot(3, 4, position)
         plt.title(f'Mean synaptic weight arriving at the {target} striatal subnetwork')
@@ -97,7 +113,7 @@ def build_experiment_plot(figs_dir, data):
     pop_to_pop_weight_plot('left', (3,4))
     pop_to_pop_weight_plot('right', (7,8))
 
-    # Probability of action selection plot
+    # Probability of action selection
     plt.subplot(3, 4, (11, 12))
     plt.title('Probability of correct action selection')
     prob_sucess, bin_size = [], 25
@@ -118,7 +134,7 @@ def build_experiment_plot(figs_dir, data):
 
 
 
-data_dir = 'temp'
+data_dir = 'temp2'
 figs_dir = os.path.join(data_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)

@@ -13,6 +13,7 @@ class Cortex(BS.BaseBrainStructure):
         self.N['E_rec'] = self.N['I_rec'] = 500  # number of neurons to record from
         self.N['low'] = self.N['high'] = 500  # subpopulations associated to stimuli
         self.N['E_no_S'] = self.N['E'] - self.N['low'] - self.N['high'] 
+        self.N['ALL'] = self.N['I'] + self.N['E']
 
         # Connectivity
         epsilon = .1  # connection probability

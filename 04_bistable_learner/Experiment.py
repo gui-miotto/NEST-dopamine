@@ -2,6 +2,9 @@ import nest
 import numpy as np
 import BrainStructures as BS
 import DataIO as DIO
+from mpi4py import MPI
+from time import time
+from datetime import timedelta
 
 class Experiment():
     """Class representing the instrumental conditioning of a brain. A experiment is sequence of 
@@ -18,16 +21,16 @@ class Experiment():
             Master seed for EVERYTHING. Runs with the same seed and number of virtual processes
             should yeld the same results. By default 42
         """
-        self.debug = False
+        self.debug = True
         
         # Experiment parameters
-        #TODO: warmup
-        #self.warmup_duration = (1. if self.debug else 25.) * self.tau_n # warmup (no sensory input or decision making) before the trials begin
         trial_duration = 1100. if self.debug else 6000.  # Trial duration
         self.eval_time_window = 50. # Time window to check response via spike count
         self.tail_of_trial = trial_duration - self.eval_time_window
         self.min_DA_wait_time = 100. # Minimum waiting time to reward
         self.max_DA_wait_time = 1000. # Maximum waiting time to reward
+        self.warmup_magnitude = 1. if self.debug else 25. # The duration of the warmup period is        
+                                                          # given by warmup_magnitude * vta.tau_n
 
         # A random number generator (used to determine the sequence of cues)
         self.rng = np.random.RandomState(seed)
@@ -36,8 +39,12 @@ class Experiment():
         scale = .2 if self.debug else 1.
         self.brain = BS.Brain(master_seed=seed, scale=scale)
 
+        #MPI rank (here used basically just to avoid multiple printing)
+        self.mpi_rank = MPI.COMM_WORLD.Get_rank()
+        
+
     
-    def train_brain(self, n_trials=400, save_dir='temp'):
+    def train_brain(self, n_trials=400, syn_scaling=True, save_dir='temp'):
         """ Creates a brain and trains it for a specific number of trials.
         
         Parameters
@@ -48,22 +55,63 @@ class Experiment():
             Directory where the outputs will be saved. Existing files will be overwritten. By 
             default 'temp'
         """
+        rank0 = self.mpi_rank == 0
+
         # Create the whole neural network
         self.brain.build_local_network()
         
         # Write to file the experiment properties which are trial-independent
         DIO.ExperimentMethods(self).write(save_dir)
 
+        # Simulate warmup
+        warmup_duration = self.warmup_magnitude * self.brain.vta.tau_n
+        if rank0:
+            print(f'\nInitial total plastic weight: {self.brain.initial_total_weight:,}')
+            print(f'Simulating warmup for {warmup_duration} ms')
+        warmup_start = time()
+        self.simulate_rest_state(duration=warmup_duration, reset_weights=True)
+        warmup_elapsed_time = time() - warmup_start
+        if rank0:
+            print(f'Warmup simulated in {warmup_elapsed_time:.1f} seconds\n')
+
+        # Simulate trials
+        trials_wall_clock_time, successes = list(), 0
         for self.trial_ in range(1, n_trials+1):
-            print('Trial', self.trial_, 'of', n_trials)
+            if rank0:
+                print(f'Simulating trial {self.trial_} of {n_trials}:')
+            
+            # Simulate one trial and measure time taken to do it
+            trial_start = time()
             self._simulate_one_trial()
-            print('Correct action?', self.success_)
+            wall_clock_time = time() - trial_start
+            trials_wall_clock_time.append(wall_clock_time)
+            successes += 1 if self.success_ else 0
+
+            # Synaptic scaling
+            if syn_scaling:
+                old_total_weight = self.brain.rescale_corticostriatal_synapses()
+            else:
+                _, old_total_weight, _ = self.brain.get_weight_scaling_factor()
 
             # Store experiment results on file(s):
+            # TODO?: connectivity matrix?
             self.brain.read_reset_spike_detectors()
             self.brain.read_synaptic_weights()
             DIO.ExperimentResults(self).write(save_dir)
 
+            # Print some useful monitoring information
+            if rank0:
+                print('Trial simulation concluded')
+                print(f'End-of-trial total weight: {old_total_weight:,}')
+                if syn_scaling:
+                    print(f'scaled by a factor of {self.brain.syn_rescal_factor_:.4f}')
+                print('Correct action?', self.success_)
+                print(f'{successes} correct actions so far ({(successes*100./self.trial_):.2f}%)')
+                print(f'Elapsed time: {wall_clock_time:.1f} seconds')
+                mean_wct = np.mean(trials_wall_clock_time)
+                print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')
+                remaining_wct = round(mean_wct * (n_trials - self.trial_))
+                print(f'Expected remaining time: {timedelta(seconds=remaining_wct)}\n')
 
 
     def _simulate_one_trial(self):
@@ -92,7 +140,27 @@ class Experiment():
         # Simulate rest of the trial
         nest.Simulate(self.tail_of_trial)
 
+    
+    def simulate_rest_state(self, duration=100., reset_weights=True):
+        """Simulates the network in its resting state, i.e.: no stimulus and under dopamine baseline
+        levels. This function is used to simulate the warmup period and is a great debuging tool.
+        
+        Parameters
+        ----------
+        duration : float, optional
+            Simulation duration, by default 100.
+        reset_weights : bool, optional
+            If true corticostriatal synapses will be set to it initial value after the simulation, 
+            by default True
+        """        
+        self.brain.vta.set_drive(length=duration, drive_type='baseline')
+        nest.Simulate(duration)
+        syn_rescal_factor, _, _ = self.brain.get_weight_scaling_factor()
+        self.brain.read_reset_spike_detectors()
+        if reset_weights:
+            self.brain.reset_corticostriatal_synapses()
 
+        return syn_rescal_factor
 
 
 

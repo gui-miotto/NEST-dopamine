@@ -1,9 +1,10 @@
-import nest
+import nest, multiprocessing
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import BrainStructures as BS
 from itertools import product
+from mpi4py import MPI
 from copy import deepcopy
 
 
@@ -38,24 +39,26 @@ class Brain(BS.BaseBrainStructure):
         self.kernel_pars = {
             'print_time' : False,
             'resolution' : self.dt,
-            'local_num_threads' : 12,
+            #'local_num_threads' : multiprocessing.cpu_count(),
+            'local_num_threads' : 4,
             'grng_seed' : master_seed,
             }
 
         # Define structures in the Brain
         self.cortex = BS.Cortex(neu_params=self.neuron_params, J_E=self.J, scale=self.scale)
-        self.striatum = BS.Striatum(C_E=self.cortex.C['E'], scale=self.scale)
+        self.striatum = BS.Striatum(C_E=self.cortex.C['E'], J_I=self.cortex.J['I'], scale=self.scale)
         self.vta = BS.VTA(dt=self.dt, J_E=self.J, syn_delay=self.syn_delay, scale=self.scale)
         self.structures = [self.cortex, self.striatum, self.vta]
 
+        # MPI communication
+        self.mpi_comm = MPI.COMM_WORLD
+        self.mpi_rank = self.mpi_comm.Get_rank()
+        self.mpi_procs = self.mpi_comm.Get_size()
+
     
     def _configure_kernel(self):
-        # Threads and MPI processes
-        self.mpi_procs = nest.NumProcesses()
-        self.mpi_rank = nest.Rank()
-        v_procs = self.mpi_procs * self.kernel_pars['local_num_threads']
-
         # Internal random number generator (RNG) for NEST (i.e. used by the kernel)
+        v_procs = self.mpi_procs * self.kernel_pars['local_num_threads']
         mid_seed = self.kernel_pars['grng_seed'] + 1 + v_procs
         self.kernel_pars['rng_seeds'] = range(self.kernel_pars['grng_seed'] + 1, mid_seed)
 
@@ -84,6 +87,7 @@ class Brain(BS.BaseBrainStructure):
         for struct in self.structures:
             struct.build_local_network()
             self.spkdets.update(struct.spkdets)
+            #TODO: there shouldnt be repeated keys here. assure that
         
         # Connect cortex to striatum in a balanced way (We wouldnt need to be so careful if the 
         # network was larger, because the chance of having big percentual differences in connecivity
@@ -97,7 +101,7 @@ class Brain(BS.BaseBrainStructure):
                 )
         
         # Get connections for later weight monitoring
-        self.w_ind = ['low', 'high', 'E_rec', 'ALL']
+        self.w_ind = ['low', 'high', 'E_rec', 'E']
         self.w_col = ['left', 'right', 'ALL']
         self.synapses = pd.DataFrame(index=self.w_ind, columns=self.w_col)
         self.weights_count = deepcopy(self.synapses)
@@ -107,6 +111,7 @@ class Brain(BS.BaseBrainStructure):
             cnns = nest.GetConnections(self.cortex.neurons[source], self.striatum.neurons[target])
             self.synapses.loc[source, target] = cnns
             self.weights_count.loc[source, target] = len(cnns)
+        self.initial_total_weight = self.striatum.N['ALL'] * self.cortex.C['E'] * self.J
 
 
     def read_synaptic_weights(self):
@@ -115,4 +120,29 @@ class Brain(BS.BaseBrainStructure):
             self.weights_mean_.loc[source, target] = np.mean(weights)
             self.weights_hist_.loc[source, target] = np.histogram(
                 weights, bins=20, range=(0., self.vta.DA_pars['Wmax']))
+    
+
+    def reset_corticostriatal_synapses(self):
+        nest.SetStatus(self.synapses.loc['E', 'ALL'], params='weight', val=self.J)
+
+
+    def rescale_corticostriatal_synapses(self):
+        self.syn_rescal_factor_, old_total_weight, new_weights = self.get_weight_scaling_factor()
+        nest.SetStatus(self.synapses.loc['E', 'ALL'], params='weight', val=new_weights)
+        return old_total_weight
+
+
+    def get_weight_scaling_factor(self):
+        weights = nest.GetStatus(self.synapses.loc['E', 'ALL'], 'weight')
+        total_weight = np.sum(weights, dtype='f')
+        recvbuf = np.empty(self.mpi_procs, dtype='f') if self.mpi_rank == 0 else None
+        self.mpi_comm.Gather(total_weight, recvbuf, root=0)
+        if self.mpi_rank == 0:
+            total_weight = np.sum(recvbuf)
+            syn_rescal_factor = self.initial_total_weight / total_weight
+        else:
+            syn_rescal_factor = None
+        syn_rescal_factor = self.mpi_comm.bcast(syn_rescal_factor, root=0)
+        scaled_weights = np.array(weights) * syn_rescal_factor
+        return syn_rescal_factor, total_weight, scaled_weights
 

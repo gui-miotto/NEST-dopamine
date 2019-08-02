@@ -5,7 +5,7 @@ from mpi4py import MPI
 import BrainStructures as BS
 
 class Striatum(BS.BaseBrainStructure):
-    def __init__(self, C_E, **args):
+    def __init__(self, C_E, J_I, **args):
         super().__init__(**args)
     
         # Number of neurons
@@ -19,7 +19,7 @@ class Striatum(BS.BaseBrainStructure):
 
         # synapse parameters
         self.w = .25 # ratio between strength of inter-subpopulation synapses and intra-subpopulation ones
-        self.J_inter = -160.
+        self.J_inter = J_I
         self.J_intra = self.w * self.J_inter
 
         # Background activity

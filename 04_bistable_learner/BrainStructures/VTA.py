@@ -15,19 +15,18 @@ class VTA(BS.BaseBrainStructure):
         Wmax_mult = 5.
         A_minus_mult = 1.5
 
-        self.J = J_E
         self.tau_n = 200.
-        A_plus = A_plus_mult * self.J
+        A_plus = A_plus_mult * J_E
         A_minus = A_minus_mult * A_plus
         self.DA_pars = {
-            'weight' : self.J,  # Default 1.
+            'weight' : J_E,  # Default 1.
             'delay': syn_delay, # Default 1.; Synaptic delay
             'tau_n' : self.tau_n, # Default 200.; Time constant of dopaminergic trace in ms
             'b' : 1. / self.dt,  # Default 0.; Dopaminergic baseline concentration
             'n' : 1. / self.dt + 2.5 / self.tau_n, # Default 0.; Initial dopamine concentration
             'A_plus' : A_plus,  # Default 1.; Amplitude of weight change for facilitation
             'A_minus' : A_minus,  # Default 1.5; Amplitude of weight change for depression
-            'Wmax' : self.J * Wmax_mult, # Maximal synaptic weight  
+            'Wmax' : J_E * Wmax_mult, # Maximal synaptic weight  
             #'tau_c' : 1000., # Default 1000.,  # Time constant of eligibility trace in ms
             #'tau_plus' : 20.0, #  Default 20.; STDP time constant for facilitation in ms
             #'Wmin' : 0., # Default 0. # Minimal synaptic weight

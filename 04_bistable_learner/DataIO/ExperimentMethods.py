@@ -4,7 +4,7 @@ import os.path
 class ExperimentMethods():
 
     def __init__(self, exp):
-        self.rank = exp.brain.mpi_rank
+        self.rank = exp.mpi_rank
         self.weights_count = exp.brain.weights_count
         self.eval_time_window = exp.eval_time_window
         self.neurons = {

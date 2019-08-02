@@ -15,6 +15,7 @@ class Reader():
         self.success = []
         self.events = []
         self.weights_mean = []
+        self.syn_rescal_factor = []
 
     def read(self, exp_dir):
 
@@ -32,6 +33,7 @@ class Reader():
             self.cue.append(ER0.cue)
             self.lminusr.append(ER0.lminusr)
             self.success.append(ER0.success)
+            self.syn_rescal_factor.append(ER0.syn_rescal_factor)
             events = {key : {'senders':np.array([]), 'times':np.array([])} for key in ER0.events}
             weights_mean = weights_count[0] * 0
 

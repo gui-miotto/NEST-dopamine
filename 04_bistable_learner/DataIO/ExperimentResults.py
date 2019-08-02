@@ -3,7 +3,7 @@ import pickle, time, os.path
 class ExperimentResults(object):
 
     def __init__(self, exp):
-        self.rank = exp.brain.mpi_rank
+        self.rank = exp.mpi_rank
         self.trial = exp.trial_
         self.cue = exp.cue_
         self.lminusr = exp.lminusr_
@@ -11,6 +11,7 @@ class ExperimentResults(object):
         self.events = exp.brain.events_
         self.weights_mean = exp.brain.weights_mean_
         self.weights_hist = exp.brain.weights_hist_
+        self.syn_rescal_factor = exp.brain.syn_rescal_factor_
 
 
 
