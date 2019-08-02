@@ -69,6 +69,25 @@ def build_trial_plots(figs_dir, data):
         plt.legend(loc='upper right')
         plt.xlabel('time (s)')
 
+        # Mean weight between cortex and left striatum
+        def pop_to_pop_histogram(target, position):
+            plt.subplot(3, 4, position)
+            plt.title(f'Cortex to {target} striatum weights')
+            low_h = data.weights_hist[trial].loc['low', target]
+            high_h = data.weights_hist[trial].loc['high', target]
+            #Erec_h = data.weights_hist[trial].loc['E_rec', target]
+            n_bars = len(low_h)
+            x = np.linspace(0, data.wmax, n_bars)
+            width = data.wmax / n_bars / 2.
+            plt.bar(x - width/2, low_h, width, label='low', log=True)
+            plt.bar(x + width/2, high_h, width, label='high', log=True)
+            #plt.ylim(1., EM.N['A'] * EM.C['S'] * 10)
+            plt.xlabel('weight')
+            plt.legend(loc='upper center')
+        pop_to_pop_histogram('left', 4)
+        pop_to_pop_histogram('right', 8)
+
+
         # Connectivity matrix
         plt.subplot(3, 4, 12)
         plt.title('Connectivity matrix')

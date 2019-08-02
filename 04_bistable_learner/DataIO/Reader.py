@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from glob import glob
 from functools import reduce
+from itertools import product
+from copy import deepcopy
 
 class Reader():
     @property
@@ -15,6 +17,7 @@ class Reader():
         self.success = []
         self.events = []
         self.weights_mean = []
+        self.weights_hist = []
         self.syn_rescal_factor = []
 
     def read(self, exp_dir):
@@ -36,6 +39,9 @@ class Reader():
             self.syn_rescal_factor.append(ER0.syn_rescal_factor)
             events = {key : {'senders':np.array([]), 'times':np.array([])} for key in ER0.events}
             weights_mean = weights_count[0] * 0
+            weights_hist = deepcopy(ER0.weights_hist)  # copy the dataframe and then...
+            for sc, tg in product(weights_hist.index, weights_hist.columns):  #... set all values...
+                weights_hist.loc[sc, tg] = np.zeros_like(weights_hist.loc[sc, tg])  # .. to zero.
 
             # And then we loop through the different MPI processes outputs
             for proc_file in os.listdir(trial_dir):
@@ -51,13 +57,13 @@ class Reader():
                 
                 # Merge weights data
                 weights_mean += weights_count[ER.rank] * ER.weights_mean
-
-
+                weights_hist += ER.weights_hist
 
             
             
             self.events.append(events)
             self.weights_mean.append(weights_mean / weight_count_total)
+            self.weights_hist.append(weights_hist)
 
 
 

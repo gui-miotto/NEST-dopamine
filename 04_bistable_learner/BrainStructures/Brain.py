@@ -119,7 +119,7 @@ class Brain(BS.BaseBrainStructure):
             weights = nest.GetStatus(self.synapses.loc[source, target], 'weight')
             self.weights_mean_.loc[source, target] = np.mean(weights)
             self.weights_hist_.loc[source, target] = np.histogram(
-                weights, bins=20, range=(0., self.vta.DA_pars['Wmax']))
+                weights, bins=21, range=(0., self.vta.DA_pars['Wmax']))[0]
     
 
     def reset_corticostriatal_synapses(self):
