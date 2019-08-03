@@ -28,7 +28,7 @@ def get_raster_data(events, gids=None, shift_senders=False, shift_times=False, t
 
 def build_trial_plots(figs_dir, data):
     for trial in range(data.num_of_trials):
-        print('Plotting trial', trial)
+        print('Plotting trial', trial+1)
         
         # Create figure
         plt.style.use('ggplot')
