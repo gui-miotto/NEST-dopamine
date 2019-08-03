@@ -5,7 +5,9 @@ class ExperimentMethods():
 
     def __init__(self, exp):
         self.rank = exp.mpi_rank
+        self.striatum_N = exp.brain.striatum.N
         self.weights_count = exp.brain.weights_count
+        self.trial_duration = exp.trial_duration
         self.eval_time_window = exp.eval_time_window
         self.wmax = exp.brain.vta.DA_pars['Wmax']
         self.neurons = {

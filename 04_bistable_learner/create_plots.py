@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, FormatStrFormatter
 from itertools import product
+from collections import defaultdict
 
 
 def get_raster_data(events, gids=None, shift_senders=False, shift_times=False, tmin=None, tmax=None):
@@ -51,17 +52,18 @@ def build_trial_plots(figs_dir, data):
                 shift_times=True)
             raster_data[pop] = {'senders' : senders + i * nsamp, 'times' : times}
         
-        # decision period raster plot
+        # Raster plot: decision period
         plt.subplot(3,4,1)
         plt.title('Decision period raster plot')
         for pop, events in raster_data.items():
-            plt.scatter(events['times'], events['senders'], marker='o', s=5., label=pop)
+            dec_events = get_raster_data(events, tmax=data.eval_time_window)
+            plt.scatter(dec_events[1], dec_events[0], marker='o', s=5., label=pop)
         t_min = -.1 * data.eval_time_window
         t_max = 1.1 * data.eval_time_window
         plt.xlim(t_min, t_max)
         plt.xlabel('time (ms)')
 
-        # full trial raster plot
+        # Raster plot: full trial
         plt.subplot(3,4,(2,3))
         plt.title('Full trial raster plot')
         for pop, events in raster_data.items():
@@ -69,7 +71,21 @@ def build_trial_plots(figs_dir, data):
         plt.legend(loc='upper right')
         plt.xlabel('time (s)')
 
-        # Mean weight between cortex and left striatum
+        # Histogram: Mean weight between cortex and left striatum 
+        plt.subplot(3, 4, 4)
+        plt.title(f'Cortex to striatum weights')
+        left_h = data.weights_hist[trial].loc['E', 'left']
+        right_h = data.weights_hist[trial].loc['E', 'right']
+        n_bars = len(left_h)
+        x = np.linspace(0, data.wmax, n_bars)
+        width = data.wmax / n_bars / 2.
+        plt.bar(x - width/2, left_h, width, label='left', log=True, color='C2')
+        plt.bar(x + width/2, right_h, width, label='right', log=True, color='C3')
+        #plt.ylim(1., EM.N['A'] * EM.C['S'] * 10)
+        plt.xlabel('weight')
+        plt.legend(loc='upper center')
+
+        # Histogram: Mean weight between cortex and left striatum
         def pop_to_pop_histogram(target, position):
             plt.subplot(3, 4, position)
             plt.title(f'Cortex to {target} striatum weights')
@@ -84,18 +100,19 @@ def build_trial_plots(figs_dir, data):
             #plt.ylim(1., EM.N['A'] * EM.C['S'] * 10)
             plt.xlabel('weight')
             plt.legend(loc='upper center')
-        pop_to_pop_histogram('left', 4)
-        pop_to_pop_histogram('right', 8)
-
+        pop_to_pop_histogram('left', 8)
+        pop_to_pop_histogram('right', 12)
 
         # Connectivity matrix
-        plt.subplot(3, 4, 12)
+        plt.subplot(3, 4, 9)
         plt.title('Connectivity matrix')
         source = ['low', 'high', 'E_rec']
         target = ['left', 'right']
         cnn_matrix = data.weights_mean[trial].loc[source, target].to_numpy(dtype ='float32').T
         #plt.imshow(cnn_matrix, cmap=plt.get_cmap('hot'), origin='lower', vmin=0., vmax=data.wmax)
         plt.imshow(cnn_matrix, origin='lower', vmin=0., vmax=data.wmax) #TODO decide which is the best cmap to use now
+        for (j,i),val in np.ndenumerate(cnn_matrix):
+            plt.gca().text(i, j, f'{val:.2f}', ha='center', va='center')
         padx, pady = 10, '\n\n'
         plt.xticks(
             [.5, 1.5, 2.5], 
@@ -104,9 +121,6 @@ def build_trial_plots(figs_dir, data):
         plt.yticks([.5, 1.5], (pady + 'left', pady + 'right'), va='top')
         plt.xlabel('cortical sources')
         plt.ylabel('striatal targets')
-    
-
-
         
         # Save figure
         fig_file = 'trial_' + trial_num_str + '.png'
@@ -130,7 +144,7 @@ def build_experiment_plot(figs_dir, data):
     plt.plot(trials, np.abs(data.lminusr))
     plt.xlabel('trials')
 
-    # Synaptic scaling factors
+    # Plot: Synaptic scaling factors
     plt.subplot(3,4,(5, 6))
     plt.title('Synaptic scaling factor')
     plt.plot(trials, data.syn_rescal_factor)
@@ -141,6 +155,21 @@ def build_experiment_plot(figs_dir, data):
     plt.xlabel('trials')
     plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
 
+    # Plot: Striatal firing rates
+    plt.subplot(3,4,(9, 10))
+    plt.title('Striatum firing rates')
+    n_events = defaultdict(list)
+    for pop in ['left', 'right']:
+        for events in data.events:
+            n_events[pop].append(len(events[pop]['times']))
+        frs = np.array(n_events[pop]) / data.striatum_N[pop] / data.trial_duration * 1000.
+        plt.plot(trials, frs, label=pop)
+    n_events_all = (np.array(n_events['left']) + np.array(n_events['right']))
+    frs_all = n_events_all / data.striatum_N['ALL'] / data.trial_duration * 1000.
+    plt.plot(trials, frs_all, label='all')
+    plt.legend()
+    plt.xlabel('trials')
+    plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Mean weight between stimulus and actions
     def pop_to_pop_weight_plot(target, position):
@@ -165,7 +194,6 @@ def build_experiment_plot(figs_dir, data):
     plt.plot(trials_coarse, prob_sucess)
     plt.xlabel('trial')
     plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
-
 
     # Save figure
     fig_file = 'experiment_overview.png'

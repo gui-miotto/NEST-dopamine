@@ -5,6 +5,12 @@ from mpi4py import MPI
 import BrainStructures as BS
 
 class Striatum(BS.BaseBrainStructure):
+    """ Abstraction of a striatum. Contains just inhibitiony neurons mutually connected randomly 
+    with constant indegree. Can be divided into two subpopulations. Connections within a 
+    subpopulation have greater (i.e. less negative) weights than those across subpopulations. Class 
+    members whose names are followed by a trailing _ (e.g. self.firing_rates_) are updated at every
+    trial, the others are constant throughout the whole experiment.
+    """
     def __init__(self, C_E, J_I, **args):
         super().__init__(**args)
     
@@ -18,7 +24,7 @@ class Striatum(BS.BaseBrainStructure):
         self.conn_params = {'rule': 'fixed_indegree', 'indegree': int(epsilon * n)} 
 
         # synapse parameters
-        self.w = .25 # ratio between strength of inter-subpopulation synapses and intra-subpopulation ones
+        self.w = .25 # ratio between strength of inter and intra-subpopulation synapses
         self.J_inter = J_I
         self.J_intra = self.w * self.J_inter
 
@@ -64,3 +70,9 @@ class Striatum(BS.BaseBrainStructure):
             decision_spikes = dict()
         decision_spikes = self.mpi_comm.bcast(decision_spikes, root=0)
         return decision_spikes
+    
+    """def calc_mean_firing_rates(self, timespan):
+        self.firing_rates_ = dict()
+        for pop in ['left', 'right']:
+            n_events = nest.GetStatus(self.spkdets[pop], 'n_events')[0]
+            self.firing_rates_[pop] = n_events / self.N[pop] / timespan * 1000."""

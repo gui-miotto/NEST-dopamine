@@ -21,10 +21,34 @@ class Reader():
         self.syn_rescal_factor = []
 
     def read(self, exp_dir):
-
         weights_count, weight_count_total = self._read_methods(exp_dir)
+        self._read_trials(exp_dir, weights_count, weight_count_total)
+        return self
 
+    def _read_methods(self, exp_dir):
+        # Read the methods
+        # Some information are the same for every MPI process. So we read just from rank 0.
+        m0_file_path =  os.path.join(exp_dir, 'methods-rank-000.data')
+        EM0 = pickle.load(open(m0_file_path, 'rb'))
+        self.neurons = EM0.neurons
+        self.trial_duration = EM0.trial_duration
+        self.eval_time_window = EM0.eval_time_window
+        self.wmax = EM0.wmax
+        self.striatum_N = EM0.striatum_N
 
+        #And then we loop through the different MPI processes outputs
+        methods_paths = os.path.join(exp_dir, 'methods-rank-*.data')
+        weights_count = list()
+        for mp in sorted(glob(methods_paths)):
+            EM = pickle.load(open(mp, 'rb'))
+            weights_count.append(EM.weights_count)
+        weight_count_total = reduce(lambda x, y: x.add(y, fill_value=0), weights_count)
+
+        return weights_count, weight_count_total  # will be used to calculate the weighted average
+                                                  # of the synaptic weights
+    
+
+    def _read_trials(self, exp_dir, weights_count, weight_count_total):
         #loop through trials
         trials_dir = os.path.join(exp_dir, 'trial-*/')
         for trial_dir in sorted(glob(trials_dir)):
@@ -59,37 +83,7 @@ class Reader():
                 weights_mean += weights_count[ER.rank] * ER.weights_mean
                 weights_hist += ER.weights_hist
 
-            
-            
             self.events.append(events)
             self.weights_mean.append(weights_mean / weight_count_total)
             self.weights_hist.append(weights_hist)
-
-
-
-        return self
-
-    def _read_methods(self, exp_dir):
-        # Read the methods
-        # Some information are the same for every MPI process. So we read just from rank 0.
-        m0_file_path =  os.path.join(exp_dir, 'methods-rank-000.data')
-        EM0 = pickle.load(open(m0_file_path, 'rb'))
-        self.neurons = EM0.neurons
-        self.eval_time_window = EM0.eval_time_window
-        self.wmax = EM0.wmax
-
-        #And then we loop through the different MPI processes outputs
-        methods_paths = os.path.join(exp_dir, 'methods-rank-*.data')
-        weights_count = list()
-        for mp in sorted(glob(methods_paths)):
-            EM = pickle.load(open(mp, 'rb'))
-            weights_count.append(EM.weights_count)
-        weight_count_total = reduce(lambda x, y: x.add(y, fill_value=0), weights_count)
-
-        return weights_count, weight_count_total
     
-
-
-    
-
-

@@ -24,9 +24,9 @@ class Experiment():
         self.debug = True
         
         # Experiment parameters
-        trial_duration = 1100. if self.debug else 6000.  # Trial duration
-        self.eval_time_window = 50. # Time window to check response via spike count
-        self.tail_of_trial = trial_duration - self.eval_time_window
+        self.trial_duration = 1100. if self.debug else 6000.  # Trial duration
+        self.eval_time_window = 20. # Time window to check response via spike count
+        self.tail_of_trial = self.trial_duration - self.eval_time_window
         self.min_DA_wait_time = 100. # Minimum waiting time to reward
         self.max_DA_wait_time = 1000. # Maximum waiting time to reward
         self.warmup_magnitude = 1. if self.debug else 25. # The duration of the warmup period is        

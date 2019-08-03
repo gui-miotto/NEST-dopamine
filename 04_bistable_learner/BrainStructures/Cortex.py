@@ -3,7 +3,6 @@ import BrainStructures as BS
 
 
 class Cortex(BS.BaseBrainStructure):
-    
     def __init__(self, neu_params, J_E, **args):
         super().__init__(**args)
 

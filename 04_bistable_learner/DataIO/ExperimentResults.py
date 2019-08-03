@@ -14,7 +14,6 @@ class ExperimentResults(object):
         self.syn_rescal_factor = exp.brain.syn_rescal_factor_
 
 
-
     def write(self, save_dir):
         save_dir = os.path.join(save_dir, 'trial-'+str(self.trial).rjust(3, '0'))
         while not os.path.exists(save_dir):
