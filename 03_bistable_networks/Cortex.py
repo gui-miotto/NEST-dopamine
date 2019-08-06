@@ -8,7 +8,7 @@ class Cortex(BaseBrainStructure):
         super().__init__(**args)
 
         # Number of neurons
-        self.N['I'] = int(2500 * self.scale)  # number of inhibitory neurons
+        self.N['I'] = int(250 * self.scale)  # number of inhibitory neurons
         self.N['E'] = 4 * self.N['I']  # number of excitatory neurons
         self.N['E_rec'] = self.N['I_rec'] = 500  # number of neurons to record from
         self.N['L'] = self.N['H'] = 500  # subpopulations associated to stimuli
