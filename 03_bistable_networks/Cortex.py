@@ -10,8 +10,8 @@ class Cortex(BaseBrainStructure):
         # Number of neurons
         self.N['I'] = int(250 * self.scale)  # number of inhibitory neurons
         self.N['E'] = 4 * self.N['I']  # number of excitatory neurons
-        self.N['E_rec'] = self.N['I_rec'] = 500  # number of neurons to record from
-        self.N['L'] = self.N['H'] = 500  # subpopulations associated to stimuli
+        self.N['E_rec'] = self.N['I_rec'] = 100  # number of neurons to record from
+        self.N['L'] = self.N['H'] = 100  # subpopulations associated to stimuli
 
         # Connectivity
         epsilon = 0.1  # connection probability
@@ -23,7 +23,7 @@ class Cortex(BaseBrainStructure):
         self.J['I'] = -g * self.J['E']  # amplitude of inhibitory postsynaptic current
 
         # Background firing rate
-        eta = .9  # external rate relative to threshold rate
+        eta = .88  # external rate relative to threshold rate
         nu_th = neu_params['V_th'] * neu_params['C_m']
         nu_th /= self.J['E'] * self.C['E'] * math.e * neu_params['tau_m'] * neu_params['tau_syn_ex']
         nu_ex = eta * nu_th
@@ -48,7 +48,7 @@ class Cortex(BaseBrainStructure):
         self.neurons['ALL'] = self.neurons['E'] + self.neurons['I']
 
         # Connect subpopulations to spike detectors
-        for pop in ['L', 'H', 'E_rec', 'I_rec']:
+        for pop in ['E', 'L', 'H', 'E_rec', 'I_rec']:
             self.spkdets[pop] = nest.Create('spike_detector')
             nest.Connect(self.neurons[pop], self.spkdets[pop])
 

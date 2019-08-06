@@ -8,21 +8,21 @@ class Striatum(BaseBrainStructure):
         super().__init__(**args)
     
         # Number of neurons
-        n = int(1250 * self.scale)  # neurons per subpopulation
+        n = int(500 * self.scale)  # neurons per subpopulation
         self.N['A'] = self.N['B'] = n
         self.N['ALL'] = self.N['A'] + self.N['B']
 
         # Connectivity
-        epsilon = .1  # connection probability
+        epsilon = .025  # connection probability
         self.conn_params = {'rule': 'fixed_indegree', 'indegree': int(epsilon * n)} 
 
         # synapse parameters
-        self.w = .25 # ratio between strength of inter-subpopulation synapses and intra-subpopulation ones
+        self.w = 1. # ratio between strength of inter-subpopulation synapses and intra-subpopulation ones
         self.J_inter = -160.
         self.J_intra = self.w * self.J_inter
 
         # Background activity
-        self.bg_rate = 7500.
+        self.bg_rate = 8100.
         
     def build_local_network(self):
         # Create neurons and connect them to spike detectors

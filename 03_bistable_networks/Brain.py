@@ -27,7 +27,6 @@ class Brain(BaseBrainStructure):
         
         # Synapse parameters
         self.syn_delay = 1.5  # synaptic delay in ms
-        self.ctx_str_indegree = 1000 # cortical boutons per MSN
         
         # Kernel parameters
         self.dt = .1
@@ -35,7 +34,7 @@ class Brain(BaseBrainStructure):
         self.kernel_pars = {
             'print_time' : False,
             'resolution' : self.dt,
-            'local_num_threads' : 12,
+            'local_num_threads' : 4,
             'grng_seed' : master_seed,
             }
         
@@ -61,7 +60,7 @@ class Brain(BaseBrainStructure):
         nest.Connect(
             self.cortex.neurons['E'], 
             self.striatum.neurons['ALL'],
-            {'rule': 'fixed_indegree', 'indegree': self.ctx_str_indegree},
+            {'rule': 'fixed_indegree', 'indegree': self.cortex.C['E']},
             'cortex_E_synapse'
             )
         
@@ -92,25 +91,31 @@ class Brain(BaseBrainStructure):
         nest.SetStatus(cnns, params='weight', val=40.)
 
     def Simulate(self):
-        #self.TEST_reinforce('L', 'A')
-        #self.TEST_reinforce('H', 'B')
-        #self.cortex.stimulate_subpopulation('L', 10000.)
+        self.TEST_reinforce('L', 'A')
+        self.TEST_reinforce('H', 'B')
+        self.cortex.stimulate_subpopulation('L', 10000.)
         
-        nest.Simulate(20000.)
-        cortex_events = nest.GetStatus(self.cortex.spkdets['L'], 'events')[0]
-        cortex_events_2 = nest.GetStatus(self.cortex.spkdets['E_rec'], 'events')[0]
+        t_sim = 20000.
+        nest.Simulate(t_sim)
+        cortex_events_L = nest.GetStatus(self.cortex.spkdets['L'], 'events')[0]
+        cortex_events_rec = nest.GetStatus(self.cortex.spkdets['E_rec'], 'events')[0]
+        cortex_events_all = nest.GetStatus(self.cortex.spkdets['E'], 'events')[0]
         str_A_events = nest.GetStatus(self.striatum.spkdets['A'], 'events')[0]
         str_B_events = nest.GetStatus(self.striatum.spkdets['B'], 'events')[0]
         
         # print CVs
-        unique_senders = np.unique(cortex_events_2['senders'])
+        unique_senders = np.unique(cortex_events_all['senders'])
         CVs = list()
         for us in unique_senders:
-            sender_ind = np.where(cortex_events_2['senders']==us)
-            times = cortex_events_2['times'][sender_ind]
+            sender_ind = np.where(cortex_events_all['senders']==us)
+            times = cortex_events_all['times'][sender_ind]
             CVs.append(self.calc_CV(np.sort(times)))
         print('mean CV', np.mean(CVs))
-        print('global CV', self.calc_CV(np.sort(cortex_events_2['times'])))
+        print('global CV', self.calc_CV(np.sort(cortex_events_all['times'])))
+        n_events_ctx = len(cortex_events_all['times'])
+        print('ctx fr', n_events_ctx / self.cortex.N['E'] / t_sim * 1000.)
+        n_events_str = len(str_A_events['times']) + len(str_B_events['times'])
+        print('str fr', n_events_str / self.striatum.N['ALL'] / t_sim * 1000.)
 
 
         plt.style.use('ggplot')
@@ -118,17 +123,17 @@ class Brain(BaseBrainStructure):
         fig.suptitle('w = ' + str(self.striatum.w), size=16., weight='bold')
         
         axes[0].set_title('Cortex L')
-        axes[0].scatter(cortex_events['times']/1000., cortex_events['senders'], marker='.', s=3)
+        axes[0].scatter(cortex_events_L['times']/1000., cortex_events_L['senders'], marker='.', s=3)
 
         axes[1].set_title('Cortex control')
-        axes[1].scatter(cortex_events_2['times']/1000., cortex_events_2['senders'], marker='.', s=3)
+        axes[1].scatter(cortex_events_rec['times']/1000., cortex_events_rec['senders'], marker='.', s=3)
         
-        str_A_sample = self.striatum.neurons['A'][:500]
+        str_A_sample = self.striatum.neurons['A'][:100]
         strA_snd, strA_t = utils.get_raster_data(str_A_events, str_A_sample)
         axes[2].set_title('Striatum (sub-network A)')
         axes[2].scatter(strA_t/1000., strA_snd - np.min(strA_snd), marker='.', s=3)
         
-        str_B_sample = self.striatum.neurons['B'][:500]
+        str_B_sample = self.striatum.neurons['B'][:100]
         strB_snd, strB_t = utils.get_raster_data(str_B_events, str_B_sample)
         axes[3].set_title('Striatum (sub-network B)')
         axes[3].scatter(strB_t/1000., strB_snd - np.min(strB_snd), marker='.', s=3)
