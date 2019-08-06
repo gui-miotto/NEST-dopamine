@@ -203,7 +203,7 @@ def build_experiment_plot(figs_dir, data):
 
 
 
-data_dir = '../../results/test_big'
+data_dir = '../../results/w1'
 figs_dir = os.path.join(data_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)

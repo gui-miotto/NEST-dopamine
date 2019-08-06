@@ -17,6 +17,7 @@ class ExperimentMethods():
             'right' : exp.brain.striatum.neurons['right'],
         }
 
+
     def write(self, save_dir):
         while not os.path.exists(save_dir):
             if self.rank == 0:
@@ -27,5 +28,3 @@ class ExperimentMethods():
         pickle.dump(self, open(file_path, 'wb'))
     
     
-
-

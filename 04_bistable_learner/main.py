@@ -9,9 +9,16 @@ if __name__ == '__main__':
         help='Number of trials in the experiment (default 400)')
     args = parser.parse_args()
     
-    # Build and run experiment
+    # Build experiment
     exp = Experiment()
-    exp.train_brain(n_trials=args.n_trials, save_dir=args.outdir)
+    
+    # Tweeks go here:
+    aversion = False
+    exp.brain.striatum.w = 1.
+
+
+    # Run experiment
+    exp.train_brain(n_trials=args.n_trials, aversion=aversion, save_dir=args.outdir)
 
 
     

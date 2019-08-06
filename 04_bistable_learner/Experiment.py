@@ -43,7 +43,7 @@ class Experiment():
         self.mpi_rank = MPI.COMM_WORLD.Get_rank()
 
     
-    def train_brain(self, n_trials=400, syn_scaling=True, save_dir='temp'):
+    def train_brain(self, n_trials=400, syn_scaling=True, aversion=True, save_dir='temp'):
         """ Creates a brain and trains it for a specific number of trials.
         
         Parameters
@@ -90,7 +90,7 @@ class Experiment():
             
             # Simulate one trial and measure time taken to do it
             trial_start = time()
-            self._simulate_one_trial()
+            self._simulate_one_trial(aversion)
             wall_clock_time = time() - trial_start
             trials_wall_clock_time.append(wall_clock_time)
             successes += 1 if self.success_ else 0
@@ -123,7 +123,7 @@ class Experiment():
                 print(f'Expected remaining time: {timedelta(seconds=remaining_wct)}\n')
 
 
-    def _simulate_one_trial(self):
+    def _simulate_one_trial(self, aversion):
         # Decide randomly what will be the next cue and do the corresponding stimulation
         self.cue_ = ['low', 'high'][self.rng.randint(2)]
         self.brain.cortex.stimulate_subpopulation(spop=self.cue_, delay=self.brain.dt)
@@ -143,7 +143,7 @@ class Experiment():
         else:
             wait_time = self.max_DA_wait_time - (abs(self.lminusr_) - 1) * 10.  #TODO: calibrate this
             wait_time = round(np.clip(wait_time, self.min_DA_wait_time, self.max_DA_wait_time))
-            drive_type = 'rewarding' if self.success_ else 'aversive'
+            drive_type = 'rewarding' if self.success_ else 'aversive' if aversion else 'baseline'
             self.brain.vta.set_drive(length=self.tail_of_trial, drive_type=drive_type, delay=wait_time)
 
         # Simulate rest of the trial
