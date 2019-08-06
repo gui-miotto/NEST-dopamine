@@ -71,8 +71,3 @@ class Striatum(BS.BaseBrainStructure):
         decision_spikes = self.mpi_comm.bcast(decision_spikes, root=0)
         return decision_spikes
     
-    """def calc_mean_firing_rates(self, timespan):
-        self.firing_rates_ = dict()
-        for pop in ['left', 'right']:
-            n_events = nest.GetStatus(self.spkdets[pop], 'n_events')[0]
-            self.firing_rates_[pop] = n_events / self.N[pop] / timespan * 1000."""

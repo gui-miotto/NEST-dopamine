@@ -92,9 +92,9 @@ class Brain(BaseBrainStructure):
         nest.SetStatus(cnns, params='weight', val=40.)
 
     def Simulate(self):
-        self.TEST_reinforce('L', 'A')
-        self.TEST_reinforce('H', 'B')
-        self.cortex.stimulate_subpopulation('L', 10000.)
+        #self.TEST_reinforce('L', 'A')
+        #self.TEST_reinforce('H', 'B')
+        #self.cortex.stimulate_subpopulation('L', 10000.)
         
         nest.Simulate(20000.)
         cortex_events = nest.GetStatus(self.cortex.spkdets['L'], 'events')[0]
@@ -102,6 +102,17 @@ class Brain(BaseBrainStructure):
         str_A_events = nest.GetStatus(self.striatum.spkdets['A'], 'events')[0]
         str_B_events = nest.GetStatus(self.striatum.spkdets['B'], 'events')[0]
         
+        # print CVs
+        unique_senders = np.unique(cortex_events_2['senders'])
+        CVs = list()
+        for us in unique_senders:
+            sender_ind = np.where(cortex_events_2['senders']==us)
+            times = cortex_events_2['times'][sender_ind]
+            CVs.append(self.calc_CV(np.sort(times)))
+        print('mean CV', np.mean(CVs))
+        print('global CV', self.calc_CV(np.sort(cortex_events_2['times'])))
+
+
         plt.style.use('ggplot')
         fig, axes = plt.subplots(4, 1, sharex=True, figsize=(14, 14))
         fig.suptitle('w = ' + str(self.striatum.w), size=16., weight='bold')
@@ -125,9 +136,17 @@ class Brain(BaseBrainStructure):
         
         plt.show()
 
-
         #print('\n', cortex_events, cortex_events/self.structures['cortex'].N['E_rec'] / t)
         #print(str_A_events, str_A_events / self.structures['striatum'].N['A'] / t)
         #print(str_B_events, str_B_events / self.structures['striatum'].N['B'] / t)
         #ratio =  str_A_events/str_B_events
         #print('ratio', ratio)
+
+    def calc_CV(self, times):
+        # ISI : inter spike interval
+        ISI = (np.append(times, 0) - np.append(0, times))[:-1]
+        ISI_mean = np.mean(ISI)
+        ISI_vari = np.var(ISI)
+        return ISI_vari / ISI_mean
+
+

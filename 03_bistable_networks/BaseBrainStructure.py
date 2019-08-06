@@ -28,3 +28,4 @@ class BaseBrainStructure(object):
             for gid, proc in local_nodes:
                 nest.SetStatus([gid], {'V_m': self.py_rngs[proc].uniform(v_min, v_max)})
 
+    

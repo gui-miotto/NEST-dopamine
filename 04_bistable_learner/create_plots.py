@@ -22,8 +22,8 @@ def get_raster_data(events, gids=None, shift_senders=False, shift_times=False, t
         matches = np.where(times <= tmax)
         senders = senders[matches]
         times = times[matches]
-    senders = senders - np.min(senders) if shift_senders else senders
-    times = times - np.min(times) if shift_times else times
+    senders = senders - np.min(senders) if shift_senders and len(senders) > 0 else senders
+    times = times - np.min(times) if shift_times and len(times) > 0 else times
     return senders, times
 
 def build_trial_plots(figs_dir, data):
@@ -203,7 +203,7 @@ def build_experiment_plot(figs_dir, data):
 
 
 
-data_dir = 'temp2'
+data_dir = '../../results/test_big'
 figs_dir = os.path.join(data_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)

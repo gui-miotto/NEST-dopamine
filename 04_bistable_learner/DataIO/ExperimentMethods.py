@@ -1,5 +1,4 @@
-import pickle
-import os.path
+import pickle, time, os.path
 
 class ExperimentMethods():
 
@@ -19,8 +18,11 @@ class ExperimentMethods():
         }
 
     def write(self, save_dir):
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
+        while not os.path.exists(save_dir):
+            if self.rank == 0:
+                os.mkdir(save_dir)
+            else:
+                time.sleep(.1)
         file_path = os.path.join(save_dir, 'methods-rank-'+str(self.rank).rjust(3, '0')+'.data')
         pickle.dump(self, open(file_path, 'wb'))
     

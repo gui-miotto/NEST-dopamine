@@ -21,7 +21,7 @@ class Experiment():
             Master seed for EVERYTHING. Runs with the same seed and number of virtual processes
             should yeld the same results. By default 42
         """
-        self.debug = True
+        self.debug = False
         
         # Experiment parameters
         self.trial_duration = 1100. if self.debug else 6000.  # Trial duration
@@ -41,7 +41,6 @@ class Experiment():
 
         #MPI rank (here used basically just to avoid multiple printing)
         self.mpi_rank = MPI.COMM_WORLD.Get_rank()
-        
 
     
     def train_brain(self, n_trials=400, syn_scaling=True, save_dir='temp'):
@@ -60,15 +59,22 @@ class Experiment():
         color = {'red' : '\033[91m', 'green' : '\033[92m', 'none' : '\033[0m'}
 
         # Create the whole neural network
-        self.brain.build_local_network()
-        
+        if rank0:
+            print('\nBuilding network')
+        build_start = time()
+        n_nodes = self.brain.build_local_network()
+        build_elapsed_time = time() - build_start
+
         # Write to file the experiment properties which are trial-independent
         DIO.ExperimentMethods(self).write(save_dir)
 
         # Simulate warmup
         warmup_duration = self.warmup_magnitude * self.brain.vta.tau_n
+        
         if rank0:
-            print(f'\nInitial total plastic weight: {self.brain.initial_total_weight:,}')
+            print(f'Building completed in {build_elapsed_time:.1f} seconds')
+            print('Number of nodes:', n_nodes)
+            print(f'Initial total plastic weight: {self.brain.initial_total_weight:,}')
             print(f'Simulating warmup for {warmup_duration} ms')
         warmup_start = time()
         self.simulate_rest_state(duration=warmup_duration, reset_weights=True)
@@ -102,7 +108,7 @@ class Experiment():
 
             # Print some useful monitoring information
             if rank0:
-                print('Trial simulation concluded')
+                print(f'Trial simulation concluded in {wall_clock_time:.1f} seconds')
                 print(f'End-of-trial total weight: {old_total_weight:,}')
                 if syn_scaling:
                     print(f'scaled by a factor of {self.brain.syn_rescal_factor_:.4f}')
@@ -111,7 +117,6 @@ class Experiment():
                 else:
                     print(f'{color["red"]}Wrong action{color["none"]}')
                 print(f'{successes} correct actions so far ({(successes*100./self.trial_):.2f}%)')
-                print(f'Elapsed time: {wall_clock_time:.1f} seconds')
                 mean_wct = np.mean(trials_wall_clock_time)
                 print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')
                 remaining_wct = round(mean_wct * (n_trials - self.trial_))

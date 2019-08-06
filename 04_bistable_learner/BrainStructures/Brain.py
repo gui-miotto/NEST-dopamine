@@ -40,7 +40,7 @@ class Brain(BS.BaseBrainStructure):
             'print_time' : False,
             'resolution' : self.dt,
             #'local_num_threads' : multiprocessing.cpu_count(),
-            'local_num_threads' : 4,
+            'local_num_threads' : 1,
             'grng_seed' : master_seed,
             }
 
@@ -67,8 +67,8 @@ class Brain(BS.BaseBrainStructure):
             [np.random.RandomState(seed) for seed in range(mid_seed, mid_seed + v_procs)]
 
         # Configure kernel
-        nest.ResetKernel()
         nest.set_verbosity(self.verbosity)
+        nest.ResetKernel()
         nest.SetKernelStatus(self.kernel_pars)
 
     
@@ -112,6 +112,9 @@ class Brain(BS.BaseBrainStructure):
             self.synapses.loc[source, target] = cnns
             self.weights_count.loc[source, target] = len(cnns)
         self.initial_total_weight = self.striatum.N['ALL'] * self.cortex.C['E'] * self.J
+
+        # Return total number of nodes in the network
+        return nest.GetKernelStatus('network_size')
 
 
     def read_synaptic_weights(self):
