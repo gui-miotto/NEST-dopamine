@@ -25,8 +25,8 @@ class Striatum(BS.BaseBrainStructure):
 
         # synapse parameters
         self.w = .25 # ratio between strength of inter and intra-subpopulation synapses
-        self.J_inter = J_I
-        self.J_intra = self.w * self.J_inter
+        self.J_inter = J_I  # weight for synapses between neurons of distinct sub populations
+        self.J_intra = self.w * self.J_inter  # weight for synapses between neurons of the same sub populations;
 
         # Background activity
         self.bg_rate = 7500.

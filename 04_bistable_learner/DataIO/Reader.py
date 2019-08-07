@@ -20,10 +20,12 @@ class Reader():
         self.weights_hist = []
         self.syn_rescal_factor = []
 
+
     def read(self, exp_dir):
         weights_count, weight_count_total = self._read_methods(exp_dir)
         self._read_trials(exp_dir, weights_count, weight_count_total)
         return self
+
 
     def _read_methods(self, exp_dir):
         # Read the methods

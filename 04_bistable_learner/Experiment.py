@@ -43,7 +43,7 @@ class Experiment():
         self.mpi_rank = MPI.COMM_WORLD.Get_rank()
 
     
-    def train_brain(self, n_trials=400, syn_scaling=True, save_dir='temp'):
+    def train_brain(self, n_trials=400, syn_scaling=True, aversion=True, save_dir='temp'):
         """ Creates a brain and trains it for a specific number of trials.
         
         Parameters
@@ -90,7 +90,7 @@ class Experiment():
             
             # Simulate one trial and measure time taken to do it
             trial_start = time()
-            self._simulate_one_trial()
+            self._simulate_one_trial(aversion)
             wall_clock_time = time() - trial_start
             trials_wall_clock_time.append(wall_clock_time)
             successes += 1 if self.success_ else 0
@@ -107,6 +107,7 @@ class Experiment():
             DIO.ExperimentResults(self).write(save_dir)
 
             # Print some useful monitoring information
+            cumulated_success = successes * 100. / self.trial_
             if rank0:
                 print(f'Trial simulation concluded in {wall_clock_time:.1f} seconds')
                 print(f'End-of-trial total weight: {old_total_weight:,}')
@@ -116,14 +117,16 @@ class Experiment():
                     print(f'{color["green"]}Correct action{color["none"]}')
                 else:
                     print(f'{color["red"]}Wrong action{color["none"]}')
-                print(f'{successes} correct actions so far ({(successes*100./self.trial_):.2f}%)')
+                print(f'{successes} correct actions so far ({cumulated_success:.2f}%)')
                 mean_wct = np.mean(trials_wall_clock_time)
                 print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')
                 remaining_wct = round(mean_wct * (n_trials - self.trial_))
                 print(f'Expected remaining time: {timedelta(seconds=remaining_wct)}\n')
+        
+        return cumulated_success
 
 
-    def _simulate_one_trial(self):
+    def _simulate_one_trial(self, aversion):
         # Decide randomly what will be the next cue and do the corresponding stimulation
         self.cue_ = ['low', 'high'][self.rng.randint(2)]
         self.brain.cortex.stimulate_subpopulation(spop=self.cue_, delay=self.brain.dt)
@@ -143,7 +146,7 @@ class Experiment():
         else:
             wait_time = self.max_DA_wait_time - (abs(self.lminusr_) - 1) * 10.  #TODO: calibrate this
             wait_time = round(np.clip(wait_time, self.min_DA_wait_time, self.max_DA_wait_time))
-            drive_type = 'rewarding' if self.success_ else 'aversive'
+            drive_type = 'rewarding' if self.success_ else 'aversive' if aversion else 'baseline'
             self.brain.vta.set_drive(length=self.tail_of_trial, drive_type=drive_type, delay=wait_time)
 
         # Simulate rest of the trial

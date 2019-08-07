@@ -12,7 +12,7 @@ class VTA(BS.BaseBrainStructure):
 
         # Dopamine modulation parameters
         A_plus_mult = .01  #TODO: clean up this mess
-        Wmax_mult = 5.
+        Wmax_mult = 3.
         A_minus_mult = 1.5
 
         self.tau_n = 200.
@@ -35,6 +35,7 @@ class VTA(BS.BaseBrainStructure):
         self.salience = 10  # integer greater than 0. Number of spikes added or subtracted from the 
                             # baseline in the face of rewarding or aversive events (respectively)
         
+
     def build_local_network(self):
         # Create nodes
         self.drive = nest.Create('spike_generator')  # Spike generator to drive VTA activity
@@ -78,3 +79,4 @@ class VTA(BS.BaseBrainStructure):
         
         spike_times = np.round(spike_times, decimals=1)
         nest.SetStatus(self.drive, params={'spike_times' : spike_times})
+
