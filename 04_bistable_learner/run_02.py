@@ -14,7 +14,8 @@ if __name__ == '__main__':
     
     # Tweeks go here:
     aversion = False
-    exp.brain.striatum.w = 1.
+    exp.brain.striatum.w = .25
+    exp.brain.striatum.J_intra = exp.brain.striatum.w * exp.brain.striatum.J_inter
 
 
     # Run experiment

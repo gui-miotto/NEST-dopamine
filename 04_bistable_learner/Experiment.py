@@ -107,6 +107,7 @@ class Experiment():
             DIO.ExperimentResults(self).write(save_dir)
 
             # Print some useful monitoring information
+            cumulated_success = successes * 100. / self.trial_
             if rank0:
                 print(f'Trial simulation concluded in {wall_clock_time:.1f} seconds')
                 print(f'End-of-trial total weight: {old_total_weight:,}')
@@ -116,11 +117,13 @@ class Experiment():
                     print(f'{color["green"]}Correct action{color["none"]}')
                 else:
                     print(f'{color["red"]}Wrong action{color["none"]}')
-                print(f'{successes} correct actions so far ({(successes*100./self.trial_):.2f}%)')
+                print(f'{successes} correct actions so far ({cumulated_success:.2f}%)')
                 mean_wct = np.mean(trials_wall_clock_time)
                 print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')
                 remaining_wct = round(mean_wct * (n_trials - self.trial_))
                 print(f'Expected remaining time: {timedelta(seconds=remaining_wct)}\n')
+        
+        return cumulated_success
 
 
     def _simulate_one_trial(self, aversion):
