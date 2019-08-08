@@ -90,8 +90,8 @@ class Brain(BS.BaseBrainStructure):
             #TODO: there shouldnt be repeated keys here. assure that
         
         # Connect cortex to striatum in a balanced way (We wouldnt need to be so careful if the 
-        # network was larger, because the chance of having big percentual differences in connecivity
-        # between suppopulations would be smaller)
+        # network was larger, because the chance of having big percentual differences in 
+        # connectivity between suppopulations would be smaller
         for source, target in product(['low', 'high', 'E_no_S'], ['left', 'right']):
             nest.Connect(
                 self.cortex.neurons[source], 
@@ -99,6 +99,7 @@ class Brain(BS.BaseBrainStructure):
                 {'rule': 'fixed_indegree', 'indegree': self.cortex.C[source]},
                 'corticostriatal_synapse'
                 )
+        self.striatum.plastic_weight_setpoint = self.cortex.C['E'] * self.J
         
         # Get connections for later weight monitoring
         self.w_ind = ['low', 'high', 'E_rec', 'E']
