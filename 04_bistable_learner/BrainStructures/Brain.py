@@ -40,7 +40,7 @@ class Brain(BS.BaseBrainStructure):
             'print_time' : False,
             'resolution' : self.dt,
             #'local_num_threads' : multiprocessing.cpu_count(),
-            'local_num_threads' : 1,
+            'local_num_threads' : 12,
             'grng_seed' : master_seed,
             }
 
@@ -128,7 +128,7 @@ class Brain(BS.BaseBrainStructure):
     def reset_corticostriatal_synapses(self):
         nest.SetStatus(self.synapses.loc['E', 'ALL'], params='weight', val=self.J)
 
-
+    # TODO: new synaptic scaling rule based only on local weights
     def rescale_corticostriatal_synapses(self):
         self.syn_rescal_factor_, old_total_weight, new_weights = self.get_weight_scaling_factor()
         nest.SetStatus(self.synapses.loc['E', 'ALL'], params='weight', val=new_weights)

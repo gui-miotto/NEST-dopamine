@@ -7,10 +7,10 @@ class Cortex(BS.BaseBrainStructure):
         super().__init__(**args)
 
         # Number of neurons
-        self.N['I'] = int(2500 * self.scale)  # number of inhibitory neurons
+        self.N['I'] = int(250 * self.scale)  # number of inhibitory neurons
         self.N['E'] = 4 * self.N['I']  # number of excitatory neurons
-        self.N['E_rec'] = self.N['I_rec'] = 500  # number of neurons to record from
-        self.N['low'] = self.N['high'] = 500  # subpopulations associated to stimuli
+        self.N['E_rec'] = self.N['I_rec'] = 100  # number of neurons to record from
+        self.N['low'] = self.N['high'] = 100  # subpopulations associated to stimuli
         self.N['E_no_S'] = self.N['E'] - self.N['low'] - self.N['high'] 
         self.N['ALL'] = self.N['I'] + self.N['E']
 
@@ -24,7 +24,7 @@ class Cortex(BS.BaseBrainStructure):
         self.J['I'] = -g * self.J['E']  # amplitude of inhibitory postsynaptic current
 
         # Background firing rate
-        eta = .9  # external rate relative to threshold rate
+        eta = .88  # external rate relative to threshold rate
         nu_th = neu_params['V_th'] * neu_params['C_m']
         nu_th /= self.J['E'] * self.C['E'] * math.e * neu_params['tau_m'] * neu_params['tau_syn_ex']
         nu_ex = eta * nu_th

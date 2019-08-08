@@ -43,7 +43,7 @@ class Experiment():
         self.mpi_rank = MPI.COMM_WORLD.Get_rank()
 
     
-    def train_brain(self, n_trials=400, syn_scaling=True, aversion=True, save_dir='temp'):
+    def train_brain(self, n_trials=400, syn_scaling=True, aversion=True, save_dir='/tmp/learner'):
         """ Creates a brain and trains it for a specific number of trials.
         
         Parameters
@@ -83,7 +83,7 @@ class Experiment():
             print(f'Warmup simulated in {warmup_elapsed_time:.1f} seconds\n')
 
         # Simulate trials
-        trials_wall_clock_time, successes = list(), 0
+        trials_wall_clock_time, successes = list(), list()
         for self.trial_ in range(1, n_trials+1):
             if rank0:
                 print(f'Simulating trial {self.trial_} of {n_trials}:')
@@ -93,7 +93,7 @@ class Experiment():
             self._simulate_one_trial(aversion)
             wall_clock_time = time() - trial_start
             trials_wall_clock_time.append(wall_clock_time)
-            successes += 1 if self.success_ else 0
+            successes.append(self.success_)
 
             # Synaptic scaling
             if syn_scaling:
@@ -107,7 +107,7 @@ class Experiment():
             DIO.ExperimentResults(self).write(save_dir)
 
             # Print some useful monitoring information
-            cumulated_success = successes * 100. / self.trial_
+            n_succ = np.sum(successes)
             if rank0:
                 print(f'Trial simulation concluded in {wall_clock_time:.1f} seconds')
                 print(f'End-of-trial total weight: {old_total_weight:,}')
@@ -117,13 +117,13 @@ class Experiment():
                     print(f'{color["green"]}Correct action{color["none"]}')
                 else:
                     print(f'{color["red"]}Wrong action{color["none"]}')
-                print(f'{successes} correct actions so far ({cumulated_success:.2f}%)')
+                print(f'{n_succ} correct actions so far ({n_succ * 100. / self.trial_:.2f}%)')
                 mean_wct = np.mean(trials_wall_clock_time)
                 print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')
                 remaining_wct = round(mean_wct * (n_trials - self.trial_))
                 print(f'Expected remaining time: {timedelta(seconds=remaining_wct)}\n')
         
-        return cumulated_success
+        return successes
 
 
     def _simulate_one_trial(self, aversion):
@@ -144,7 +144,7 @@ class Experiment():
         if self.lminusr_ == 0:  # just keep the baseline  #TODO I think this wont almost never happen anymore. Change the criterion?
             self.brain.vta.set_drive(length=self.tail_of_trial, drive_type='baseline')
         else:
-            wait_time = self.max_DA_wait_time - (abs(self.lminusr_) - 1) * 10.  #TODO: calibrate this
+            wait_time = self.max_DA_wait_time - (abs(self.lminusr_) - 1) * 100.  #TODO: calibrate this
             wait_time = round(np.clip(wait_time, self.min_DA_wait_time, self.max_DA_wait_time))
             drive_type = 'rewarding' if self.success_ else 'aversive' if aversion else 'baseline'
             self.brain.vta.set_drive(length=self.tail_of_trial, drive_type=drive_type, delay=wait_time)

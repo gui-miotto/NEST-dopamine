@@ -11,13 +11,9 @@ class VTA(BS.BaseBrainStructure):
         self.N['ALL'] = 1  # Number of neurons. No need to scale here
 
         # Dopamine modulation parameters
-        A_plus_mult = .01  #TODO: clean up this mess
-        Wmax_mult = 3.
-        A_minus_mult = 1.5
-
         self.tau_n = 200.
-        A_plus = A_plus_mult * J_E
-        A_minus = A_minus_mult * A_plus
+        A_plus = .01 * J_E
+        A_minus = 1.5 * A_plus
         self.DA_pars = {
             'weight' : J_E,  # Default 1.
             'delay': syn_delay, # Default 1.; Synaptic delay
@@ -26,7 +22,7 @@ class VTA(BS.BaseBrainStructure):
             'n' : 1. / self.dt + 2.5 / self.tau_n, # Default 0.; Initial dopamine concentration
             'A_plus' : A_plus,  # Default 1.; Amplitude of weight change for facilitation
             'A_minus' : A_minus,  # Default 1.5; Amplitude of weight change for depression
-            'Wmax' : J_E * Wmax_mult, # Maximal synaptic weight  
+            'Wmax' : 3. * J_E, # Maximal synaptic weight  
             #'tau_c' : 1000., # Default 1000.,  # Time constant of eligibility trace in ms
             #'tau_plus' : 20.0, #  Default 20.; STDP time constant for facilitation in ms
             #'Wmin' : 0., # Default 0. # Minimal synaptic weight

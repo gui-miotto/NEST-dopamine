@@ -15,7 +15,8 @@ class Striatum(BS.BaseBrainStructure):
         super().__init__(**args)
     
         # Number of neurons
-        n = int(1.25 * C_E)  # neurons per subpopulation
+        #n = int(1.25 * C_E)  # neurons per subpopulation
+        n = 100
         self.N['left'] = self.N['right'] = n
         self.N['ALL'] = self.N['left'] + self.N['right']
 
@@ -24,12 +25,12 @@ class Striatum(BS.BaseBrainStructure):
         self.conn_params = {'rule': 'fixed_indegree', 'indegree': int(epsilon * n)} 
 
         # synapse parameters
-        self.w = .25 # ratio between strength of inter and intra-subpopulation synapses
+        self.w = 1. # ratio between strength of inter and intra-subpopulation synapses
         self.J_inter = J_I  # weight for synapses between neurons of distinct sub populations
         self.J_intra = self.w * self.J_inter  # weight for synapses between neurons of the same sub populations;
 
         # Background activity
-        self.bg_rate = 7500.
+        self.bg_rate = 7950.
 
         # MPI communication
         self.mpi_comm = MPI.COMM_WORLD

@@ -8,7 +8,7 @@ class Striatum(BaseBrainStructure):
         super().__init__(**args)
     
         # Number of neurons
-        n = int(500 * self.scale)  # neurons per subpopulation
+        n = int(100 * self.scale)  # neurons per subpopulation
         self.N['A'] = self.N['B'] = n
         self.N['ALL'] = self.N['A'] + self.N['B']
 
@@ -22,7 +22,7 @@ class Striatum(BaseBrainStructure):
         self.J_intra = self.w * self.J_inter
 
         # Background activity
-        self.bg_rate = 8100.
+        self.bg_rate = 7950.
         
     def build_local_network(self):
         # Create neurons and connect them to spike detectors
