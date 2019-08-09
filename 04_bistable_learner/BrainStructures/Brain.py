@@ -41,7 +41,7 @@ class Brain(BS.BaseBrainStructure):
             'print_time' : False,
             'resolution' : self.dt,
             #'local_num_threads' : multiprocessing.cpu_count(),
-            'local_num_threads' : 4,
+            'local_num_threads' : 12,
             'grng_seed' : master_seed,
             }
 

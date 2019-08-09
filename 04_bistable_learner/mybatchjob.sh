@@ -13,7 +13,7 @@ SCRIPTPATH=$HOME/code/$TASKNAME.py
 OUTDIR=$(ws_find learner)/$TASKNAME
 
 module load system/modules/testing
-module load mpi/openmpi/3.1-gnu-7.3
+module load mpi/openmpi/3.1-gnu-8.2
 module load neuro/nest/2.16.0-python-3.7.0
 
 mpirun python $SCRIPTPATH $OUTDIR --n_trials 200

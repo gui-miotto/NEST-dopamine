@@ -203,7 +203,8 @@ def build_experiment_plot(figs_dir, data):
 
 
 
-data_dir = '../../results/local_01'
+#data_dir = '../../results/local_01'
+data_dir = '/tmp/learner'
 figs_dir = os.path.join(data_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)

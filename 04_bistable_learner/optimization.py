@@ -4,15 +4,15 @@ from bayes_opt.observer import JSONLogger
 from bayes_opt.event import Events
 from Experiment import Experiment
 
-ASEED = 42
+ASEED = 43
 
 def run_experiment(aplus_mult, aminus_mult, aversion):
     exp = Experiment(seed=ASEED)
     exp.brain.vta.DA_pars['A_plus'] = aplus_mult * exp.brain.vta.DA_pars['weight']
     exp.brain.vta.DA_pars['A_minus'] = aminus_mult * exp.brain.vta.DA_pars['weight']
     av = True if aversion > .5 else False
-    success_history = exp.train_brain(n_trials=300, aversion=av)
-    return np.sum(success_history[200:])
+    success_history = exp.train_brain(n_trials=150, aversion=av, full_io=False)
+    return np.sum(success_history[-100:])
 
 # Bounded region of parameter space
 pbounds = {
@@ -27,20 +27,19 @@ optimizer = BayesianOptimization(
     random_state=ASEED+1,
 )
 
-logger = JSONLogger(path="../../results/optimization/home.json")
+logger = JSONLogger(path="../../results/optimization/home3.json")
 optimizer.subscribe(Events.OPTMIZATION_STEP, logger)
 
-# configuration used for local_01
 optimizer.probe(
     params={
-        'aplus_mult': .01, 
-        'aminus_mult': .015,
-        'aversion' : 1.},
+        "aminus_mult": 0.13321804261960515, 
+        "aplus_mult": 0.05641041016692336, 
+        "aversion": 0.0290138244243604},
     lazy=True,
 )
 
 optimizer.maximize(
-    init_points=3,
+    init_points=4,
     n_iter=12,
 )
 
