@@ -50,8 +50,10 @@ class BaseBrainStructure(object):
         local_gids = [ni['global_id'] for ni in nest.GetStatus(targets) if ni['local']]
         self.grouped_synapses = [nest.GetConnections(sources, [gid], syn_model) for gid in local_gids]
 
-
+    
     def homeostatic_scaling(self):
+        # TODO: this loop is naturally parallelized if using mpi. Maybe it could be interesting to
+        # paralelize this loop also for multithreading
         for syns in self.grouped_synapses:
             current_weights = np.array(nest.GetStatus(syns, 'weight'))
             scaling_factor = self.plastic_weight_setpoint / np.sum(current_weights)
