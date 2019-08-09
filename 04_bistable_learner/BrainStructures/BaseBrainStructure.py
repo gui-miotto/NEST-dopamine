@@ -15,8 +15,9 @@ class BaseBrainStructure(object):
         self.neurons = dict()  # Neuron handles for each subpopulation
         self.spkdets = dict()  # Spike detectors
         self.events_ = dict()  # Events registered by the spike detectors
-        self.plastic_synapses = dict()  # A dictionary of plastic synapses - one entry per neuron
-        self.plastic_weight_setpoint = None # Total plastic weight per neuron - homeostatic setpoint
+        self.grouped_synapses = list()  # A list of lists of plastic synapses grouped by target
+        self.plastic_weight_setpoint = None # Total plastic weight per target neuron - will be used
+                                            # as homeostatic setpoint
 
 
     def build_local_network(self):
@@ -41,13 +42,13 @@ class BaseBrainStructure(object):
             nest.SetStatus(spkdet, {'n_events' : 0 })
 
 
-    def store_plastic_synapses(self, neurons, inputs, syn_model):
-        # TODO: check locals here?
-        self.plastic_synapses = {n : nest.GetConnections(n, inputs, synapse_model=syn_model)}
-    
+    def group_synapses_per_target(self, sources, targets, syn_model):
+        local_gids = [ni['global_id'] for ni in nest.GetStatus(targets) if ni['local']]
+        self.grouped_synapses = [nest.GetConnections(sources, [gid], syn_model) for gid in local_gids]
 
-    def homeostatic_scaling(self)
-        for n, syns in self.plastic_synapses.items():
+
+    def homeostatic_scaling(self):
+        for syns in self.grouped_synapses:
             current_weights = np.array(nest.GetStatus(syns, 'weight'))
             scaling_factor = self.plastic_weight_setpoint / np.sum(current_weights)
             new_weights = scaling_factor * current_weights

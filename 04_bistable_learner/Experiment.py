@@ -77,10 +77,11 @@ class Experiment():
             print(f'Initial total plastic weight: {self.brain.initial_total_weight:,}')
             print(f'Simulating warmup for {warmup_duration} ms')
         warmup_start = time()
-        self.simulate_rest_state(duration=warmup_duration, reset_weights=True)
+        syn_change = self.simulate_rest_state(duration=warmup_duration, reset_weights=True)
         warmup_elapsed_time = time() - warmup_start
         if rank0:
-            print(f'Warmup simulated in {warmup_elapsed_time:.1f} seconds\n')
+            print(f'Warmup simulated in {warmup_elapsed_time:.1f} seconds')
+            print(f'Synaptic change during warmup: {syn_change:.5f}\n')
 
         # Simulate trials
         trials_wall_clock_time, successes = list(), list()
@@ -97,10 +98,8 @@ class Experiment():
 
             # Synaptic scaling
             if syn_scaling:
-                old_total_weight = self.brain.rescale_corticostriatal_synapses()
-            else:
-                _, old_total_weight, _ = self.brain.get_weight_scaling_factor()
-
+                self.brain.homeostatic_scaling()
+            
             # Store experiment results on file(s):
             self.brain.read_reset_spike_detectors()
             self.brain.read_synaptic_weights()
@@ -110,9 +109,7 @@ class Experiment():
             n_succ = np.sum(successes)
             if rank0:
                 print(f'Trial simulation concluded in {wall_clock_time:.1f} seconds')
-                print(f'End-of-trial total weight: {old_total_weight:,}')
-                if syn_scaling:
-                    print(f'scaled by a factor of {self.brain.syn_rescal_factor_:.4f}')
+                print(f'End-of-trial weight change: {self.brain.syn_change_factor_:.5f}')
                 if self.success_:
                     print(f'{color["green"]}Correct action{color["none"]}')
                 else:
@@ -167,12 +164,12 @@ class Experiment():
         """        
         self.brain.vta.set_drive(length=duration, drive_type='baseline')
         nest.Simulate(duration)
-        syn_rescal_factor, _, _ = self.brain.get_weight_scaling_factor()
+        syn_change_factor = self.brain.get_total_weight_change()
         self.brain.read_reset_spike_detectors()
         if reset_weights:
             self.brain.reset_corticostriatal_synapses()
 
-        return syn_rescal_factor
+        return syn_change_factor
 
 
 

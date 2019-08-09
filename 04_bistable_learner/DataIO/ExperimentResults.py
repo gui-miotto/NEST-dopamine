@@ -11,7 +11,7 @@ class ExperimentResults(object):
         self.events = exp.brain.events_
         self.weights_mean = exp.brain.weights_mean_
         self.weights_hist = exp.brain.weights_hist_
-        self.syn_rescal_factor = exp.brain.syn_rescal_factor_
+        self.syn_change_factor = exp.brain.syn_change_factor_
 
 
     def write(self, save_dir):

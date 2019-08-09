@@ -9,8 +9,8 @@ class Cortex(BS.BaseBrainStructure):
         # Number of neurons
         self.N['I'] = int(250 * self.scale)  # number of inhibitory neurons
         self.N['E'] = 4 * self.N['I']  # number of excitatory neurons
-        self.N['E_rec'] = self.N['I_rec'] = 100  # number of neurons to record from
-        self.N['low'] = self.N['high'] = 100  # subpopulations associated to stimuli
+        self.N['E_rec'] = self.N['I_rec'] = int(100 * self.scale)  # number of neurons to record from
+        self.N['low'] = self.N['high'] = int(100 * self.scale)  # subpopulations associated to stimuli
         self.N['E_no_S'] = self.N['E'] - self.N['low'] - self.N['high'] 
         self.N['ALL'] = self.N['I'] + self.N['E']
 

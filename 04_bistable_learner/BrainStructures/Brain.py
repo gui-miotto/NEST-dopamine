@@ -40,7 +40,7 @@ class Brain(BS.BaseBrainStructure):
             'print_time' : False,
             'resolution' : self.dt,
             #'local_num_threads' : multiprocessing.cpu_count(),
-            'local_num_threads' : 12,
+            'local_num_threads' : 4,
             'grng_seed' : master_seed,
             }
 
@@ -92,27 +92,29 @@ class Brain(BS.BaseBrainStructure):
         # Connect cortex to striatum in a balanced way (We wouldnt need to be so careful if the 
         # network was larger, because the chance of having big percentual differences in 
         # connectivity between suppopulations would be smaller
+        self.plastic_weight_setpoint = self.cortex.C['E'] * self.J
+        self.initial_total_weight = self.cortex.C['E'] * self.J * self.striatum.N['ALL']
         for source, target in product(['low', 'high', 'E_no_S'], ['left', 'right']):
             nest.Connect(
-                self.cortex.neurons[source], 
+                self.cortex.neurons[source],
                 self.striatum.neurons[target],
                 {'rule': 'fixed_indegree', 'indegree': self.cortex.C[source]},
                 'corticostriatal_synapse'
                 )
-        self.striatum.plastic_weight_setpoint = self.cortex.C['E'] * self.J
+        self.group_synapses_per_target(
+            self.cortex.neurons['E'], self.striatum.neurons['ALL'], 'corticostriatal_synapse')
         
         # Get connections for later weight monitoring
         self.w_ind = ['low', 'high', 'E_rec', 'E']
         self.w_col = ['left', 'right', 'ALL']
         self.synapses = pd.DataFrame(index=self.w_ind, columns=self.w_col)
         self.weights_count = deepcopy(self.synapses)
-        self.weights_mean_ = deepcopy(self.synapses) 
+        self.weights_mean_ = deepcopy(self.synapses)
         self.weights_hist_ = deepcopy(self.synapses)
         for source, target in product(self.w_ind, self.w_col):
             cnns = nest.GetConnections(self.cortex.neurons[source], self.striatum.neurons[target])
             self.synapses.loc[source, target] = cnns
             self.weights_count.loc[source, target] = len(cnns)
-        self.initial_total_weight = self.striatum.N['ALL'] * self.cortex.C['E'] * self.J
 
         # Return total number of nodes in the network
         return nest.GetKernelStatus('network_size')
@@ -129,24 +131,21 @@ class Brain(BS.BaseBrainStructure):
     def reset_corticostriatal_synapses(self):
         nest.SetStatus(self.synapses.loc['E', 'ALL'], params='weight', val=self.J)
 
-    # TODO: new synaptic scaling rule based only on local weights
-    def rescale_corticostriatal_synapses(self):
-        self.syn_rescal_factor_, old_total_weight, new_weights = self.get_weight_scaling_factor()
-        nest.SetStatus(self.synapses.loc['E', 'ALL'], params='weight', val=new_weights)
-        return old_total_weight
+
+    def homeostatic_scaling(self):
+        self.syn_change_factor_ = self.get_total_weight_change()
+        super().homeostatic_scaling()
 
 
-    def get_weight_scaling_factor(self):
+    def get_total_weight_change(self):
         weights = nest.GetStatus(self.synapses.loc['E', 'ALL'], 'weight')
         total_weight = np.sum(weights, dtype='f')
         recvbuf = np.empty(self.mpi_procs, dtype='f') if self.mpi_rank == 0 else None
         self.mpi_comm.Gather(total_weight, recvbuf, root=0)
         if self.mpi_rank == 0:
             total_weight = np.sum(recvbuf)
-            syn_rescal_factor = self.initial_total_weight / total_weight
+            change_factor = self.initial_total_weight / total_weight
         else:
-            syn_rescal_factor = None
-        syn_rescal_factor = self.mpi_comm.bcast(syn_rescal_factor, root=0)
-        scaled_weights = np.array(weights) * syn_rescal_factor
-        return syn_rescal_factor, total_weight, scaled_weights
-
+            change_factor = None
+        change_factor = self.mpi_comm.bcast(change_factor, root=0)
+        return change_factor

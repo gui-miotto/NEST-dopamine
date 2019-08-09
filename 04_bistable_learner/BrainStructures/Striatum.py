@@ -16,7 +16,7 @@ class Striatum(BS.BaseBrainStructure):
     
         # Number of neurons
         #n = int(1.25 * C_E)  # neurons per subpopulation
-        n = 100
+        n = int(100 * self.scale)
         self.N['left'] = self.N['right'] = n
         self.N['ALL'] = self.N['left'] + self.N['right']
 
