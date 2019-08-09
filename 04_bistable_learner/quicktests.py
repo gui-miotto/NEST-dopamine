@@ -4,7 +4,8 @@ import numpy as np
 
 
 exp = Experiment()
-exp.train_brain(400, save_dir='../../results/trash')
+#exp.train_brain(400, save_dir='../../results/trash')
+exp.train_brain(400, full_io=True)
 
 
 """ratios = []

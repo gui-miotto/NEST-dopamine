@@ -36,9 +36,13 @@ class BaseBrainStructure(object):
                 nest.SetStatus([gid], {'V_m': self.py_rngs[proc].uniform(v_min, v_max)})
     
 
-    def read_reset_spike_detectors(self):
+    def read_spike_detectors(self):
         for pop, spkdet in self.spkdets.items():
             self.events_[pop] = nest.GetStatus(spkdet, 'events')[0]
+    
+    
+    def reset_spike_detectors(self):
+        for spkdet in self.spkdets.values():
             nest.SetStatus(spkdet, {'n_events' : 0 })
 
 

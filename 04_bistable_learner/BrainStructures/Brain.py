@@ -32,6 +32,7 @@ class Brain(BS.BaseBrainStructure):
         # Default synapse parameters
         self.J = 20.  # amplitude of excitatory postsynaptic current 
         self.syn_delay = 1.5  # synaptic delay in ms
+        self.syn_change_factor_ = -1.
         
         # Kernel parameters
         self.dt = .1
@@ -132,8 +133,9 @@ class Brain(BS.BaseBrainStructure):
         nest.SetStatus(self.synapses.loc['E', 'ALL'], params='weight', val=self.J)
 
 
-    def homeostatic_scaling(self):
-        self.syn_change_factor_ = self.get_total_weight_change()
+    def homeostatic_scaling(self, log_syn_change_factor):
+        if log_syn_change_factor:
+            self.syn_change_factor_ = self.get_total_weight_change()
         super().homeostatic_scaling()
 
 

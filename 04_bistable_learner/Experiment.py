@@ -43,16 +43,32 @@ class Experiment():
         self.mpi_rank = MPI.COMM_WORLD.Get_rank()
 
     
-    def train_brain(self, n_trials=400, syn_scaling=True, aversion=True, save_dir='/tmp/learner'):
+    def train_brain(self, n_trials=400, syn_scaling=True, aversion=True, 
+        full_io=True, save_dir='/tmp/learner'):
         """ Creates a brain and trains it for a specific number of trials.
         
         Parameters
         ----------
         n_trials : int, optional
             Number of trials to perform, by default 400
+        syn_scaling : bool, optional
+            If True, a homeostatic plasticity rule (synaptic scaling like) will be applied at the
+            end of every trial, by default True
+        aversion : bool, optional
+            If True, taking wrong actions makes dopamine sink bellow the baseline. If False, taking 
+            wrong actions will keep dopamine concentrarion at baseline levels. By default True.
+        full_io : bool, optional
+            If False, there are no IOs to files and not essential MPI messages are not sent. Setting
+            this variable to False is useful for tests and automated optimization processes that 
+            depend only on the success rate By default True.
         save_dir : str, optional
-            Directory where the outputs will be saved. Existing files will be overwritten. By 
-            default 'temp'
+            Directory where the outputs will be saved (if full_io=True). Existing files will be 
+            overwritten. By default '/tmp/learner'
+        
+        Returns
+        -------
+        list[bool]
+            A list with the success history
         """
         # Some handy variables
         rank0 = self.mpi_rank == 0
@@ -66,7 +82,8 @@ class Experiment():
         build_elapsed_time = time() - build_start
 
         # Write to file the experiment properties which are trial-independent
-        DIO.ExperimentMethods(self).write(save_dir)
+        if full_io:
+            DIO.ExperimentMethods(self).write(save_dir)
 
         # Simulate warmup
         warmup_duration = self.warmup_magnitude * self.brain.vta.tau_n
@@ -77,7 +94,8 @@ class Experiment():
             print(f'Initial total plastic weight: {self.brain.initial_total_weight:,}')
             print(f'Simulating warmup for {warmup_duration} ms')
         warmup_start = time()
-        syn_change = self.simulate_rest_state(duration=warmup_duration, reset_weights=True)
+        syn_change = self.simulate_rest_state(
+            duration=warmup_duration, reset_weights=True, return_change_factor=full_io)
         warmup_elapsed_time = time() - warmup_start
         if rank0:
             print(f'Warmup simulated in {warmup_elapsed_time:.1f} seconds')
@@ -98,12 +116,14 @@ class Experiment():
 
             # Synaptic scaling
             if syn_scaling:
-                self.brain.homeostatic_scaling()
+                self.brain.homeostatic_scaling(log_syn_change_factor=full_io)
             
             # Store experiment results on file(s):
-            self.brain.read_reset_spike_detectors()
-            self.brain.read_synaptic_weights()
-            DIO.ExperimentResults(self).write(save_dir)
+            if full_io:
+                self.brain.read_spike_detectors()
+                self.brain.read_synaptic_weights()
+                DIO.ExperimentResults(self).write(save_dir)
+            self.brain.reset_spike_detectors()
 
             # Print some useful monitoring information
             n_succ = np.sum(successes)
@@ -150,7 +170,7 @@ class Experiment():
         nest.Simulate(self.tail_of_trial)
 
     
-    def simulate_rest_state(self, duration=100., reset_weights=True):
+    def simulate_rest_state(self, duration=100., reset_weights=True, return_change_factor=True):
         """Simulates the network in its resting state, i.e.: no stimulus and under dopamine baseline
         levels. This function is used to simulate the warmup period and is a great debuging tool.
         
@@ -161,11 +181,20 @@ class Experiment():
         reset_weights : bool, optional
             If true corticostriatal synapses will be set to it initial value after the simulation, 
             by default True
+        return_change_factor : bool, optional
+            If True returns the synaptic change factor that happened during the simulation. 
+            by default True
+
+        Returns
+        -------
+        [type]
+            Synaptic change factor (i.e. the original total plastic weight divide by the total 
+            weight after simulation). Ideally should be as close to 1. as possible.
         """        
         self.brain.vta.set_drive(length=duration, drive_type='baseline')
         nest.Simulate(duration)
-        syn_change_factor = self.brain.get_total_weight_change()
-        self.brain.read_reset_spike_detectors()
+        syn_change_factor = self.brain.get_total_weight_change() if return_change_factor else -1.
+        self.brain.reset_spike_detectors()
         if reset_weights:
             self.brain.reset_corticostriatal_synapses()
 
