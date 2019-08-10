@@ -17,9 +17,10 @@ class Striatum(BaseBrainStructure):
         self.conn_params = {'rule': 'fixed_indegree', 'indegree': int(epsilon * n)} 
 
         # synapse parameters
-        self.w = 1. # ratio between strength of inter-subpopulation synapses and intra-subpopulation ones
-        self.J_inter = -160.
-        self.J_intra = self.w * self.J_inter
+        J_I = -160.
+        self.w = .6 # ratio between strength of inter-subpopulation synapses and intra-subpopulation ones
+        self.J_inter = J_I * (1. + self.w)
+        self.J_intra = J_I * (1. - self.w)
 
         # Background activity
         self.bg_rate = 7950.

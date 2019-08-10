@@ -25,9 +25,9 @@ class Striatum(BS.BaseBrainStructure):
         self.conn_params = {'rule': 'fixed_indegree', 'indegree': int(epsilon * n)} 
 
         # synapse parameters
-        self.w = 1. # ratio between strength of inter and intra-subpopulation synapses
-        self.J_inter = J_I  # weight for synapses between neurons of distinct sub populations
-        self.J_intra = self.w * self.J_inter  # weight for synapses between neurons of the same sub populations;
+        self.w = 0. # ratio between strength of inter and intra-subpopulation synapses
+        self.J_inter = J_I * (1. + self.w)  # weight for synapses between neurons of distinct sub populations
+        self.J_intra = J_I * (1. - self.w)  # weight for synapses between neurons of the same sub populations;
 
         # Background activity
         self.bg_rate = 7950.
