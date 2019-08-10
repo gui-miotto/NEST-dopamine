@@ -1,6 +1,7 @@
 import numpy as np
 from bayes_opt import BayesianOptimization
 from bayes_opt.observer import JSONLogger
+from bayes_opt.util import load_logs
 from bayes_opt.event import Events
 from Experiment import Experiment
 
@@ -27,19 +28,21 @@ optimizer = BayesianOptimization(
     random_state=ASEED+1,
 )
 
+load_logs(optimizer, logs=["../../results/optimization/home3.json"]);
+load_logs(optimizer, logs=["../../results/optimization/bcf2.json"]);
 logger = JSONLogger(path="../../results/optimization/home3.json")
 optimizer.subscribe(Events.OPTMIZATION_STEP, logger)
 
-optimizer.probe(
+"""optimizer.probe(
     params={
         "aminus_mult": 0.13321804261960515, 
         "aplus_mult": 0.05641041016692336, 
         "aversion": 0.0290138244243604},
     lazy=True,
-)
+)"""
 
 optimizer.maximize(
-    init_points=4,
+    init_points=1,
     n_iter=12,
 )
 

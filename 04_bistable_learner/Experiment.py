@@ -21,7 +21,7 @@ class Experiment():
             Master seed for EVERYTHING. Runs with the same seed and number of virtual processes
             should yeld the same results. By default 42
         """
-        self.debug = False
+        self.debug = True
         
         # Experiment parameters
         self.trial_duration = 1100. if self.debug else 6000.  # Trial duration
@@ -38,13 +38,15 @@ class Experiment():
         # The brain to be trained
         scale = .2 if self.debug else 1.
         self.brain = BS.Brain(master_seed=seed, scale=scale)
+        self.brain_initiated = False
 
         #MPI rank (here used basically just to avoid multiple printing)
         self.mpi_rank = MPI.COMM_WORLD.Get_rank()
+        self.rank0 = self.mpi_rank == 0
 
     
     def train_brain(self, n_trials=400, syn_scaling=True, aversion=True, 
-        full_io=True, save_dir='/tmp/learner'):
+        rev_learn=False, full_io=True, save_dir='/tmp/learner'):
         """ Creates a brain and trains it for a specific number of trials.
         
         Parameters
@@ -71,41 +73,18 @@ class Experiment():
             A list with the success history
         """
         # Some handy variables
-        rank0 = self.mpi_rank == 0
         color = {'red' : '\033[91m', 'green' : '\033[92m', 'none' : '\033[0m'}
 
-        # Create the whole neural network
-        if rank0:
-            print('\nBuilding network')
-        build_start = time()
-        n_nodes = self.brain.build_local_network()
-        build_elapsed_time = time() - build_start
-
-        # Write to file the experiment properties which are trial-independent
-        if full_io:
-            DIO.ExperimentMethods(self).write(save_dir)
-
-        # Simulate warmup
-        warmup_duration = self.warmup_magnitude * self.brain.vta.tau_n
-        
-        if rank0:
-            print(f'Building completed in {build_elapsed_time:.1f} seconds')
-            print('Number of nodes:', n_nodes)
-            print(f'Initial total plastic weight: {self.brain.initial_total_weight:,}')
-            print(f'Simulating warmup for {warmup_duration} ms')
-        warmup_start = time()
-        syn_change = self.simulate_rest_state(
-            duration=warmup_duration, reset_weights=True, return_change_factor=full_io)
-        warmup_elapsed_time = time() - warmup_start
-        if rank0:
-            print(f'Warmup simulated in {warmup_elapsed_time:.1f} seconds')
-            print(f'Synaptic change during warmup: {syn_change:.5f}\n')
+        # Create brain and simulate a warmup
+        if not self.brain_initiated:
+            self._initiate_brain(full_io, save_dir)
 
         # Simulate trials
         trials_wall_clock_time, successes = list(), list()
-        for self.trial_ in range(1, n_trials+1):
-            if rank0:
-                print(f'Simulating trial {self.trial_} of {n_trials}:')
+        for trial in range(1, n_trials +1):
+            self.global_trial_ += 1
+            if self.rank0:
+                print(f'Simulating trial {trial} of {n_trials}:')
             
             # Simulate one trial and measure time taken to do it
             trial_start = time()
@@ -127,20 +106,51 @@ class Experiment():
 
             # Print some useful monitoring information
             n_succ = np.sum(successes)
-            if rank0:
+            if self.rank0:
                 print(f'Trial simulation concluded in {wall_clock_time:.1f} seconds')
                 print(f'End-of-trial weight change: {self.brain.syn_change_factor_:.5f}')
                 if self.success_:
                     print(f'{color["green"]}Correct action{color["none"]}')
                 else:
                     print(f'{color["red"]}Wrong action{color["none"]}')
-                print(f'{n_succ} correct actions so far ({n_succ * 100. / self.trial_:.2f}%)')
+                print(f'{n_succ} correct actions so far ({n_succ * 100. / trial:.2f}%)')
                 mean_wct = np.mean(trials_wall_clock_time)
                 print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')
-                remaining_wct = round(mean_wct * (n_trials - self.trial_))
+                remaining_wct = round(mean_wct * (n_trials - trial))
                 print(f'Expected remaining time: {timedelta(seconds=remaining_wct)}\n')
         
         return successes
+
+    def _initiate_brain(self, full_io, save_dir):
+        # Create the whole neural network
+        if self.rank0:
+            print('\nBuilding network')
+        build_start = time()
+        n_nodes = self.brain.build_local_network()
+        build_elapsed_time = time() - build_start
+
+        # Write to file the experiment properties which are trial-independent
+        if full_io:
+            DIO.ExperimentMethods(self).write(save_dir)
+
+        # Simulate warmup
+        warmup_duration = self.warmup_magnitude * self.brain.vta.tau_n
+        
+        if self.rank0:
+            print(f'Building completed in {build_elapsed_time:.1f} seconds')
+            print('Number of nodes:', n_nodes)
+            print(f'Initial total plastic weight: {self.brain.initial_total_weight:,}')
+            print(f'Simulating warmup for {warmup_duration} ms')
+        warmup_start = time()
+        syn_change = self.simulate_rest_state(
+            duration=warmup_duration, reset_weights=True, return_change_factor=full_io)
+        warmup_elapsed_time = time() - warmup_start
+        if self.rank0:
+            print(f'Warmup simulated in {warmup_elapsed_time:.1f} seconds')
+            print(f'Synaptic change during warmup: {syn_change:.5f}\n')
+        
+        self.global_trial_ = 0
+        self.brain_initiated = True
 
 
     def _simulate_one_trial(self, aversion):

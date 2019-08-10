@@ -5,7 +5,8 @@ import numpy as np
 
 exp = Experiment(seed=0)
 #exp.train_brain(400, save_dir='../../results/trash')
-exp.train_brain(400, full_io=False)
+exp.train_brain(n_trials=2)
+exp.train_brain(n_trials=2)
 
 
 """ratios = []
