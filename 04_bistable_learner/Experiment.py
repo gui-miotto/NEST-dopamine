@@ -46,7 +46,7 @@ class Experiment():
 
     
     def train_brain(self, n_trials=400, syn_scaling=True, aversion=True, 
-        rev_learn=False, full_io=True, save_dir='/tmp/learner'):
+        rev_learn=False, baseline_only=False, full_io=True, save_dir='/tmp/learner'):
         """ Creates a brain and trains it for a specific number of trials.
         
         Parameters
@@ -59,6 +59,12 @@ class Experiment():
         aversion : bool, optional
             If True, taking wrong actions makes dopamine sink bellow the baseline. If False, taking 
             wrong actions will keep dopamine concentrarion at baseline levels. By default True.
+        rev_learn : bool, optional
+            If True the stimuli/action association that results in reward is reversed, by default 
+            False
+        baseline_only : bool, optional
+            If True dopamine is kept at baseline levels regardless of the action taken, by default 
+            False
         full_io : bool, optional
             If False, there are no IOs to files and not essential MPI messages are not sent. Setting
             this variable to False is useful for tests and automated optimization processes that 
@@ -83,12 +89,14 @@ class Experiment():
         trials_wall_clock_time, successes = list(), list()
         for trial in range(1, n_trials +1):
             self.global_trial_ += 1
+            self.trial_begin_ = nest.GetKernelStatus('time')
             if self.rank0:
                 print(f'Simulating trial {trial} of {n_trials}:')
             
             # Simulate one trial and measure time taken to do it
             trial_start = time()
-            self._simulate_one_trial(aversion)
+            self._simulate_one_trial(
+                aversion=aversion, rev_learn=rev_learn, baseline_only=baseline_only)
             wall_clock_time = time() - trial_start
             trials_wall_clock_time.append(wall_clock_time)
             successes.append(self.success_)
@@ -153,7 +161,7 @@ class Experiment():
         self.brain_initiated = True
 
 
-    def _simulate_one_trial(self, aversion):
+    def _simulate_one_trial(self, aversion, rev_learn, baseline_only):
         # Decide randomly what will be the next cue and do the corresponding stimulation
         self.cue_ = ['low', 'high'][self.rng.randint(2)]
         self.brain.cortex.stimulate_subpopulation(spop=self.cue_, delay=self.brain.dt)
@@ -167,8 +175,9 @@ class Experiment():
         self.lminusr_ = decision_spikes['left'] - decision_spikes['right']
         self.success_ = (self.cue_ == 'low' and self.lminusr_ > 0) or \
                         (self.cue_ == 'high' and self.lminusr_ < 0)
+        self.success_ = not self.success_ if rev_learn else self.success_
         
-        if self.lminusr_ == 0:  # just keep the baseline  #TODO I think this wont almost never happen anymore. Change the criterion?
+        if self.lminusr_ == 0 or baseline_only:  # just keep the baseline  #TODO I think this wont almost never happen anymore. Change the criterion?
             self.brain.vta.set_drive(length=self.tail_of_trial, drive_type='baseline')
         else:
             wait_time = self.max_DA_wait_time - (abs(self.lminusr_) - 1) * 100.  #TODO: calibrate this

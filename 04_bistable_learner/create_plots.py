@@ -7,7 +7,7 @@ from itertools import product
 from collections import defaultdict
 
 
-def get_raster_data(events, gids=None, shift_senders=False, shift_times=False, tmin=None, tmax=None):
+def get_raster_data(events, gids=None, shift_senders=False, tmin=None, tmax=None):
     senders = events['senders']
     times = events['times']
     if gids is not None:
@@ -23,7 +23,6 @@ def get_raster_data(events, gids=None, shift_senders=False, shift_times=False, t
         senders = senders[matches]
         times = times[matches]
     senders = senders - np.min(senders) if shift_senders and len(senders) > 0 else senders
-    times = times - np.min(times) if shift_times and len(times) > 0 else times
     return senders, times
 
 def build_trial_plots(figs_dir, data):
@@ -48,8 +47,8 @@ def build_trial_plots(figs_dir, data):
             senders, times = get_raster_data(
                 data.events[trial][pop], 
                 gids=gids[:nsamp], 
-                shift_senders=True, 
-                shift_times=True)
+                shift_senders=True)
+            times -= data.trial_begin[trial]
             raster_data[pop] = {'senders' : senders + i * nsamp, 'times' : times}
         
         # Raster plot: decision period
@@ -203,8 +202,8 @@ def build_experiment_plot(figs_dir, data):
 
 
 
-data_dir = '../../results/run_04'
-#data_dir = '/tmp/learner'
+#data_dir = '../../results/run_04'
+data_dir = '/tmp/learner'
 figs_dir = os.path.join(data_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)

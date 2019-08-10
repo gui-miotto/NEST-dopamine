@@ -13,6 +13,7 @@ class Reader():
 
     def __init__(self):
         self.cue = []
+        self.trial_begin = []
         self.lminusr = []
         self.success = []
         self.events = []
@@ -60,9 +61,10 @@ class Reader():
             r0_file_path = os.path.join(trial_dir, 'rank-000.data')
             ER0 = pickle.load(open(r0_file_path, 'rb'))
             self.cue.append(ER0.cue)
+            self.trial_begin.append(ER0.trial_begin)
             self.lminusr.append(ER0.lminusr)
             self.success.append(ER0.success)
-            self.syn_rescal_factor.append(ER0.syn_rescal_factor)
+            self.syn_rescal_factor.append(ER0.syn_change_factor)
             events = {key : {'senders':np.array([]), 'times':np.array([])} for key in ER0.events}
             weights_mean = weights_count[0] * 0
             weights_hist = deepcopy(ER0.weights_hist)  # copy the dataframe and then...
