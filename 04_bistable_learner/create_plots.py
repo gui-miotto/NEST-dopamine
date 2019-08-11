@@ -1,12 +1,10 @@
 import os
-#import Conditioning.DataIO as DIO
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, FormatStrFormatter
 from itertools import product
 from collections import defaultdict
-#from Conditioning.DataIO import Reader
-from Conditioning import Reader
+from SpikingBGRL.DataIO.Reader import Reader
 
 
 def get_raster_data(events, gids=None, shift_senders=False, tmin=None, tmax=None):
@@ -204,8 +202,8 @@ def build_experiment_plot(figs_dir, data):
 
 
 
-data_dir = '../../results/local_incumbent'
-#data_dir = '/tmp/learner'
+#data_dir = '../../results/local_incumbent'
+data_dir = '/tmp/learner'
 figs_dir = os.path.join(data_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)

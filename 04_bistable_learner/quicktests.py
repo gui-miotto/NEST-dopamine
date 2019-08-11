@@ -1,4 +1,4 @@
-from Conditioning import Experiment
+from SpikingBGRL import Experiment
 import numpy as np
 
 
