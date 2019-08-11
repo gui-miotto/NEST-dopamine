@@ -1,5 +1,5 @@
 import numpy as np
-import 
+import os, subprocess
 from typing import Dict
 from bayes_opt import BayesianOptimization
 from bayes_opt.observer import JSONLogger
@@ -15,11 +15,27 @@ class Job():
         self.pars = pars
         self.nemo_id = None
         self.status = None
+    
+    @property
+    def name(self):
+        return 'job' + str(self.local_id).rjust(3, '0')
+
+    @property
+    def args(self):
+        args_str = ''
+        for arg_key, arg_val in self.args.items():
+            args_str += '--' + arg_key + ' ' + str(arg_val) + ' '
+        return args_str
+
+
 
 
 
 class JobLauncher():
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
+        self.launcher_dir = os.path.dirname(os.path.realpath(__file__))
+        self.jobs_dir = os.path.join(self.launcher_dir, 'jobs')
+        self.run_job_script_path = os.path.join(self.launcher_dir, 'run_job.py')
         self.jobs = list()
         self.max_running_jobs = 4
         self.optimizer = BayesianOptimization(
@@ -33,14 +49,54 @@ class JobLauncher():
     def n_jobs(self):
         return len(self.jobs)
 
+    @property
+    def n_jobs_running(self):
+        return np.sum([job.status=='Running' or job.status=='Idle' for job in self.jobs])
+
     def launch_new_job(self):
         new_job = Job(
             local_id=self.n_jobs,
-            pars=self.optimizer.suggest(self.utility)
-        )
+            pars=self.optimizer.suggest(self.utility))
+        script_path= self.create_batchjob(new_job)
+        new_job.nemo_id = self.run_msub(script_path)
+        self.jobs.append(new_job)
 
     def create_batchjob(self, job):
-        with fo=open()
+        job_script_path = os.path.join(self.jobs_dir, job.name+'.sh')
+        job_fo = open(job_script_path, 'w')
+        job_fo.write('#!/bin/bash\n')
+        job_fo.write('\n')
+        job_fo.write('#MSUB -l nodes=5:ppn=20\n')
+        job_fo.write('#MSUB -l walltime=24:00:00\n')
+        job_fo.write('#MSUB -l pmem=6gb\n')
+        job_fo.write('#MSUB -m bea -M alessang@tf.uni-freiburg.de\n')
+        job_fo.write('#MSUB -v MPIRUN_OPTIONS="--bind-to core --map-by core -report-bindings"\n')
+        job_fo.write(f'#MSUB -N {job.name}\n')
+        job_fo.write('\n')
+        job_fo.write('module load mpi/openmpi/3.1-gnu-8.2\n')
+        job_fo.write('module load system/modules/testing\n')
+        job_fo.write('module load neuro/nest/2.16.0-python-3.7.0\n')
+        job_fo.write('\n')
+        job_fo.write(f'mpirun python {self.run_job_script_path} {job.args}\n')
+        job_fo.close()
+        return job_script_path
+    
+    def run_msub(self, script_path):
+        result = subprocess.run(['msub', script_path], stdout=subprocess.PIPE)
+        nemo_id = result.stdout.decode('utf8').strip()
+        return nemo_id
+
+    def update_job_states(self):
+        for job in self.jobs:
+            cmd = f'checkjob {job.nemo_id} | grep ^State'
+            result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+            job.status = result.stdout.decode('utf8').strip().split()[1]
+
+    def run_optimization()
+
+
+
+        
 
 
 
