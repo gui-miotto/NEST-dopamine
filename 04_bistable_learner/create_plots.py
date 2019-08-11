@@ -150,7 +150,7 @@ def build_experiment_plot(figs_dir, data):
     reg_line = np.poly1d(np.polyfit(trials, data.syn_rescal_factor, 1))
     plt.plot(trials, reg_line(trials), label='lin reg')
     plt.legend()
-    plt.ylim(.8, 1.2)
+    plt.ylim(.9, 1.1)
     plt.xlabel('trials')
     plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
 
@@ -202,8 +202,8 @@ def build_experiment_plot(figs_dir, data):
 
 
 
-#data_dir = '../../results/run_04'
-data_dir = '/tmp/learner'
+data_dir = '../../results/local_incumbent'
+#data_dir = '/tmp/learner'
 figs_dir = os.path.join(data_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)

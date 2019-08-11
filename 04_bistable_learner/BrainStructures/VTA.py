@@ -28,9 +28,26 @@ class VTA(BS.BaseBrainStructure):
             #'Wmin' : 0., # Default 0. # Minimal synaptic weight
             #'vt' : volt_DA[0], # Volume transmitter will be assigned later on
             }
-        self.salience = 10  # integer greater than 0. Number of spikes added or subtracted from the 
-                            # baseline in the face of rewarding or aversive events (respectively)
+        self.max_salience = 10  # integer greater than 0. Number of spikes added or subtracted to 
+                                # the baseline in the face of rewarding or aversive events 
+                                # (respectively)
+        self.reward_size_ = self.max_salience
         
+
+    def adjust_reward_size(self, success_history):
+        relevant_trials = 30  # Just the last trials are taken into account
+        recent_successes = np.sum(success_history[-relevant_trials:])
+        failure_rate = (relevant_trials - recent_successes) / relevant_trials
+
+        # If failure rate is no better than chance, use max_salience
+        if failure_rate >= .5:
+            self.reward_size_ = self.max_salience
+        # Otherwise reduce salience gradually proportianally to the cubic root of the failure rate
+        else:
+            salience_mult = (2. * failure_rate) ** (1 / 3)
+            self.reward_size_ = round(salience_mult * self.max_salience) 
+            # round() returns an integer if ndigits is omitted
+
 
     def build_local_network(self):
         # Create nodes
@@ -65,12 +82,12 @@ class VTA(BS.BaseBrainStructure):
             if drive_type == 'rewarding':  # i.e the baseline with some extra spikes
                 spike_times = np.sort(np.concatenate((
                     np.arange(begin, end, self.dt), 
-                    np.arange(delivery, delivery + (self.salience - .5) * self.dt, self.dt)
+                    np.arange(delivery, delivery + (self.reward_size_ - .5) * self.dt, self.dt)
                 )))
             elif drive_type == 'aversive':  # i.e. the baseline with some missing spikes
                 spike_times = np.concatenate((
                     np.arange(begin, delivery - .5 * self.dt, self.dt),  
-                    np.arange(delivery + (self.dt * self.salience), end, self.dt)
+                    np.arange(delivery + (self.dt * self.max_salience), end, self.dt)
                 ))
         
         spike_times = np.round(spike_times, decimals=1)

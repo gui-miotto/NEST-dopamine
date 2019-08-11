@@ -7,8 +7,9 @@ class ExperimentResults(object):
         self.trial = exp.global_trial_
         self.trial_begin = exp.trial_begin_
         self.cue = exp.cue_
+        self.reward_size = exp.brain.vta.reward_size_
         self.lminusr = exp.lminusr_
-        self.success = exp.success_
+        self.success = exp.success_[-1]
         self.events = exp.brain.events_
         self.weights_mean = exp.brain.weights_mean_
         self.weights_hist = exp.brain.weights_hist_

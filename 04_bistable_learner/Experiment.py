@@ -86,12 +86,15 @@ class Experiment():
             self._initiate_brain(full_io, save_dir)
 
         # Simulate trials
-        trials_wall_clock_time, successes = list(), list()
+        trials_wall_clock_time = list()
         for trial in range(1, n_trials +1):
             self.global_trial_ += 1
             self.trial_begin_ = nest.GetKernelStatus('time')
             if self.rank0:
                 print(f'Simulating trial {trial} of {n_trials}:')
+
+            # Adjust the amplitude of the dopamine bursts
+            self.brain.vta.adjust_reward_size(self.success_)
             
             # Simulate one trial and measure time taken to do it
             trial_start = time()
@@ -99,7 +102,6 @@ class Experiment():
                 aversion=aversion, rev_learn=rev_learn, baseline_only=baseline_only)
             wall_clock_time = time() - trial_start
             trials_wall_clock_time.append(wall_clock_time)
-            successes.append(self.success_)
 
             # Synaptic scaling
             if syn_scaling:
@@ -113,11 +115,11 @@ class Experiment():
             self.brain.reset_spike_detectors()
 
             # Print some useful monitoring information
-            n_succ = np.sum(successes)
+            n_succ = np.sum(self.success_)
             if self.rank0:
                 print(f'Trial simulation concluded in {wall_clock_time:.1f} seconds')
                 print(f'End-of-trial weight change: {self.brain.syn_change_factor_:.5f}')
-                if self.success_:
+                if self.success_[-1]:
                     print(f'{color["green"]}Correct action{color["none"]}')
                 else:
                     print(f'{color["red"]}Wrong action{color["none"]}')
@@ -127,7 +129,7 @@ class Experiment():
                 remaining_wct = round(mean_wct * (n_trials - trial))
                 print(f'Expected remaining time: {timedelta(seconds=remaining_wct)}\n')
         
-        return successes
+        return self.success_
 
     def _initiate_brain(self, full_io, save_dir):
         # Create the whole neural network
@@ -141,23 +143,28 @@ class Experiment():
         if full_io:
             DIO.ExperimentMethods(self).write(save_dir)
 
-        # Simulate warmup
+        # Print build information
         warmup_duration = self.warmup_magnitude * self.brain.vta.tau_n
-        
         if self.rank0:
             print(f'Building completed in {build_elapsed_time:.1f} seconds')
             print('Number of nodes:', n_nodes)
             print(f'Initial total plastic weight: {self.brain.initial_total_weight:,}')
             print(f'Simulating warmup for {warmup_duration} ms')
+        
+        # Simulate warmup
         warmup_start = time()
         syn_change = self.simulate_rest_state(
             duration=warmup_duration, reset_weights=True, return_change_factor=full_io)
         warmup_elapsed_time = time() - warmup_start
+        
+        # Print warmup statistics
         if self.rank0:
             print(f'Warmup simulated in {warmup_elapsed_time:.1f} seconds')
             print(f'Synaptic change during warmup: {syn_change:.5f}\n')
         
+        # Some variable initiation
         self.global_trial_ = 0
+        self.success_ = list()
         self.brain_initiated = True
 
 
@@ -173,19 +180,20 @@ class Experiment():
 
         # According to the selected action, deliver the appropriate DA response
         self.lminusr_ = decision_spikes['left'] - decision_spikes['right']
-        self.success_ = (self.cue_ == 'low' and self.lminusr_ > 0) or \
-                        (self.cue_ == 'high' and self.lminusr_ < 0)
-        self.success_ = not self.success_ if rev_learn else self.success_
+        success = (self.cue_ == 'low' and self.lminusr_ > 0) or \
+                  (self.cue_ == 'high' and self.lminusr_ < 0)
+        success = not success if rev_learn else success
+        self.success_.append(success)
         
         if self.lminusr_ == 0 or baseline_only:  # just keep the baseline  #TODO I think this wont almost never happen anymore. Change the criterion?
             self.brain.vta.set_drive(length=self.tail_of_trial, drive_type='baseline')
         else:
             wait_time = self.max_DA_wait_time - (abs(self.lminusr_) - 1) * 100.  #TODO: calibrate this
             wait_time = round(np.clip(wait_time, self.min_DA_wait_time, self.max_DA_wait_time))
-            drive_type = 'rewarding' if self.success_ else 'aversive' if aversion else 'baseline'
+            drive_type = 'rewarding' if success else 'aversive' if aversion else 'baseline'
             self.brain.vta.set_drive(length=self.tail_of_trial, drive_type=drive_type, delay=wait_time)
 
-        # Simulate rest of the trial
+        # Simulate the rest of the trial
         nest.Simulate(self.tail_of_trial)
 
     
