@@ -2,9 +2,9 @@ import nest
 import numpy as np
 from itertools import product
 from mpi4py import MPI
-import BrainStructures as BS
+from .BaseBrainStructure import BaseBrainStructure
 
-class Striatum(BS.BaseBrainStructure):
+class Striatum(BaseBrainStructure):
     """ Abstraction of a striatum. Contains just inhibitiony neurons mutually connected randomly 
     with constant indegree. Can be divided into two subpopulations. Connections within a 
     subpopulation have greater (i.e. less negative) weights than those across subpopulations. Class 
@@ -25,7 +25,7 @@ class Striatum(BS.BaseBrainStructure):
         self.conn_params = {'rule': 'fixed_indegree', 'indegree': int(epsilon * n)} 
 
         # synapse parameters
-        self.w = 0. # ratio between strength of inter and intra-subpopulation synapses
+        self.w = 0. # deviation between strength of inter and intra-subpopulation synapses
         self.J_inter = J_I * (1. + self.w)  # weight for synapses between neurons of distinct sub populations
         self.J_intra = J_I * (1. - self.w)  # weight for synapses between neurons of the same sub populations;
 

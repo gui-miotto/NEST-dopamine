@@ -1,10 +1,12 @@
 import os
-import DataIO as DIO
+#import Conditioning.DataIO as DIO
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, FormatStrFormatter
 from itertools import product
 from collections import defaultdict
+#from Conditioning.DataIO import Reader
+from Conditioning import Reader
 
 
 def get_raster_data(events, gids=None, shift_senders=False, tmin=None, tmax=None):
@@ -207,7 +209,7 @@ data_dir = '../../results/local_incumbent'
 figs_dir = os.path.join(data_dir, 'plots')
 if not os.path.exists(figs_dir):
     os.mkdir(figs_dir)
-data = DIO.Reader().read(data_dir)
+data = Reader().read(data_dir)
 
 build_trial_plots(figs_dir, data)
 build_experiment_plot(figs_dir, data)

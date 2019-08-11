@@ -2,13 +2,18 @@ import nest, multiprocessing
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import BrainStructures as BS
 from itertools import product
 from mpi4py import MPI
 from copy import deepcopy
 
+from .BaseBrainStructure import BaseBrainStructure
+from .Cortex import Cortex
+from .Striatum import Striatum
+from .VTA import VTA
 
-class Brain(BS.BaseBrainStructure):
+
+
+class Brain(BaseBrainStructure):
     """Abstraction of a trainable brain. A brain is made of a cortex, a striatum and a VTA. Synapses
     between those areas are handled by this class. Synapses between the cortex and striataum are 
     excitatory, plastic and modulated by the dopamine of the VTA.
@@ -46,9 +51,9 @@ class Brain(BS.BaseBrainStructure):
             }
 
         # Define structures in the Brain
-        self.cortex = BS.Cortex(neu_params=self.neuron_params, J_E=self.J, scale=self.scale)
-        self.striatum = BS.Striatum(C_E=self.cortex.C['E'], J_I=self.cortex.J['I'], scale=self.scale)
-        self.vta = BS.VTA(dt=self.dt, J_E=self.J, syn_delay=self.syn_delay, scale=self.scale)
+        self.cortex = Cortex(neu_params=self.neuron_params, J_E=self.J, scale=self.scale)
+        self.striatum = Striatum(C_E=self.cortex.C['E'], J_I=self.cortex.J['I'], scale=self.scale)
+        self.vta = VTA(dt=self.dt, J_E=self.J, syn_delay=self.syn_delay, scale=self.scale)
         self.structures = [self.cortex, self.striatum, self.vta]
 
         # MPI communication
@@ -64,7 +69,7 @@ class Brain(BS.BaseBrainStructure):
         self.kernel_pars['rng_seeds'] = range(self.kernel_pars['grng_seed'] + 1, mid_seed)
 
         # RNGs for the user (i.e used by these scripts)
-        BS.BaseBrainStructure.py_rngs = \
+        BaseBrainStructure.py_rngs = \
             [np.random.RandomState(seed) for seed in range(mid_seed, mid_seed + v_procs)]
 
         # Configure kernel

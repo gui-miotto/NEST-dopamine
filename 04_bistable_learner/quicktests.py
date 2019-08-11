@@ -1,4 +1,4 @@
-from Experiment import Experiment
+from Conditioning import Experiment
 import numpy as np
 
 

@@ -1,9 +1,9 @@
 import nest
 import numpy as np
-import BrainStructures as BS
+from .BaseBrainStructure import BaseBrainStructure
 
 
-class VTA(BS.BaseBrainStructure):
+class VTA(BaseBrainStructure):
     def __init__(self, dt, J_E, syn_delay, **args):
         super().__init__(**args)
         

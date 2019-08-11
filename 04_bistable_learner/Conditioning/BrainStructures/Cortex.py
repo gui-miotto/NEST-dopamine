@@ -1,8 +1,8 @@
 import math, nest
-import BrainStructures as BS
+from .BaseBrainStructure import BaseBrainStructure
 
 
-class Cortex(BS.BaseBrainStructure):
+class Cortex(BaseBrainStructure):
     def __init__(self, neu_params, J_E, **args):
         super().__init__(**args)
 

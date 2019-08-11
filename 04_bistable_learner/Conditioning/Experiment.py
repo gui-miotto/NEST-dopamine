@@ -1,10 +1,10 @@
 import nest
 import numpy as np
-import BrainStructures as BS
-import DataIO as DIO
 from mpi4py import MPI
 from time import time
 from datetime import timedelta
+from .BrainStructures import Brain
+from .DataIO import ExperimentResults, ExperimentMethods
 
 class Experiment():
     """Class representing the instrumental conditioning of a brain. A experiment is sequence of 
@@ -21,7 +21,7 @@ class Experiment():
             Master seed for EVERYTHING. Runs with the same seed and number of virtual processes
             should yeld the same results. By default 42
         """
-        self.debug = True
+        self.debug = False
         
         # Experiment parameters
         self.trial_duration = 1100. if self.debug else 6000.  # Trial duration
@@ -37,7 +37,7 @@ class Experiment():
 
         # The brain to be trained
         scale = .2 if self.debug else 1.
-        self.brain = BS.Brain(master_seed=seed, scale=scale)
+        self.brain = Brain(master_seed=seed, scale=scale)
         self.brain_initiated = False
 
         #MPI rank (here used basically just to avoid multiple printing)
@@ -111,7 +111,7 @@ class Experiment():
             if full_io:
                 self.brain.read_spike_detectors()
                 self.brain.read_synaptic_weights()
-                DIO.ExperimentResults(self).write(save_dir)
+                ExperimentResults(self).write(save_dir)
             self.brain.reset_spike_detectors()
 
             # Print some useful monitoring information
@@ -141,7 +141,7 @@ class Experiment():
 
         # Write to file the experiment properties which are trial-independent
         if full_io:
-            DIO.ExperimentMethods(self).write(save_dir)
+            ExperimentMethods(self).write(save_dir)
 
         # Print build information
         warmup_duration = self.warmup_magnitude * self.brain.vta.tau_n
