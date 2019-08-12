@@ -17,7 +17,7 @@ class Job():
     
     @property
     def name(self):
-        return 'job_' + str(self.local_id).rjust(3, '0')
+        return 'job_' + str(self.local_id).rjust(4, '0')
 
     @property
     def args(self):
@@ -31,10 +31,10 @@ class JobLauncher():
     def __init__(self):
         # configurable stuff
         self.user = 'fr_ga52'
-        self.max_jobs = 3
-        self.max_running_jobs = 2
+        self.max_jobs = 400
+        self.max_running_jobs = 40
         self.par_bounds = {
-            'aplus': (.005, .5), 
+            'aplus': (.005, .5),
             'aminus': (0., 1.),
             'aversion' : (0., 1.),
             'wmax': (1.5, 3.),
@@ -42,6 +42,8 @@ class JobLauncher():
         # stuff that can remain fixed
         self.launcher_dir = os.path.dirname(os.path.realpath(__file__))
         self.jobs_dir = os.path.join(self.launcher_dir, 'jobs')
+        if not os.path.exists(self.jobs_dir):
+            os.mkdir(self.jobs_dir)
         self.run_job_script_path = os.path.join(self.launcher_dir, 'optimizer_run_job.py')
         self.optimizer = BayesOptim(f=None, pbounds=self.par_bounds, verbose=2, random_state=1)
         self.utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
@@ -61,8 +63,9 @@ class JobLauncher():
         return int(jobs_running)
 
     def run_optimization(self):
+        # submission/read phase
         for i in range(self.max_jobs):
-            print(f'Starting job number {i}')
+            print(f'Starting job number {i+1}')
             submited = False
             while not submited:
                 self.read_results()
@@ -70,27 +73,44 @@ class JobLauncher():
                     self.launch_new_job()
                     submited = True
                     print('Submited!')
-                    sleept = 10
+                    sleept = 30
                 else:
                     print(f'Too many jobs already running.')
                     sleept = 120
-                print(f'Going to sleep for {sleept} seconds')
+                print(f'Going to sleep for {sleept} seconds\n')
                 time.sleep(sleept)
-            print('Best job so far', self.optimizer.max)
+            print('Best job so far:')
+            print(self.optimizer.max)
+            print('\n')
+        # read only phase
+        while self.n_jobs_running > 0:
+            self.read_results()
+            print('All jobs submitted. Waiting for some of them to finish. Best job so far:')
+            print(self.optimizer.max)
+            sleept = 120
+            print(f'Checking again in {sleept} seconds\n')
+            time.sleep(sleept)
+        # Finished
+        self.read_results()
+        print('Optimization complete. Best job:')
+        print(self.optimizer.max)
+        
             
     def read_results(self):
-        res_files_pattern = os.path.join(self.jobs_dir, 'job_*.result')
+        res_files_pattern = os.path.join(self.jobs_dir, '*.results')
         for res_file in glob(res_files_pattern):
-            # read result file
+            # read and remove result file
             job_fo = open(res_file, 'r')
             result = float(job_fo.readline())
-            job_fo.close
-            #os.remove(res_file)
+            job_fo.close()
+            os.remove(res_file)
             # update job list
-            job_id = int(res_file.split('.')[0].split('_')[1])
+            fname = os.path.basename(res_file)
+            job_id = int(fname.split('.')[0].split('_')[1])
             self.jobs[job_id].result = result
             # register result in the optimizer
-            self.optimizer.register(params=self.jobs[job_id].params, target=result)
+            self.optimizer.register(params=self.jobs[job_id].pars, target=result)
+            print('registrei', self.jobs[job_id].pars, result)
 
     def launch_new_job(self):
         new_job = Job(
@@ -106,9 +126,9 @@ class JobLauncher():
         job_fo.write('#!/bin/bash\n')
         job_fo.write('\n')
         job_fo.write('#MSUB -l nodes=1:ppn=20\n')
-        job_fo.write('#MSUB -l walltime=12:00:00\n')
+        job_fo.write('#MSUB -l walltime=3:00:00\n')
         job_fo.write('#MSUB -l pmem=6gb\n')
-        job_fo.write('#MSUB -m bea -M alessang@tf.uni-freiburg.de\n')
+        #job_fo.write('#MSUB -m bea -M alessang@tf.uni-freiburg.de\n')
         job_fo.write('#MSUB -v MPIRUN_OPTIONS="--bind-to core --map-by core -report-bindings"\n')
         job_fo.write(f'#MSUB -N {job.name}\n')
         job_fo.write('\n')
@@ -128,3 +148,4 @@ class JobLauncher():
 if __name__ == '__main__':
     jlauncher = JobLauncher()
     jlauncher.run_optimization()
+    
