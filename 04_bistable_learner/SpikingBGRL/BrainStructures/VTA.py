@@ -12,7 +12,7 @@ class VTA(BaseBrainStructure):
 
         # Dopamine modulation parameters
         self.tau_n = 200.
-        A_plus = .01 * J_E
+        A_plus = .1 * J_E
         A_minus = 1.5 * A_plus
         self.DA_pars = {
             'weight' : J_E,  # Default 1.

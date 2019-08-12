@@ -1,12 +1,11 @@
 import numpy as np
-import os, subprocess
+import os, subprocess, time
 from typing import Dict
-from bayes_opt import BayesianOptimization
-from bayes_opt.observer import JSONLogger
-from bayes_opt.util import load_logs
-from bayes_opt.event import Events
+from glob import glob
+from bayes_opt import BayesianOptimization as BayesOptim
 from bayes_opt import UtilityFunction
-#from Experiment import Experiment
+from bayes_opt.observer import JSONLogger
+from bayes_opt.event import Events
 
 
 class Job():
@@ -14,11 +13,11 @@ class Job():
         self.local_id = local_id
         self.pars = pars
         self.nemo_id = None
-        self.status = None
+        self.result = None
     
     @property
     def name(self):
-        return 'job' + str(self.local_id).rjust(3, '0')
+        return 'job_' + str(self.local_id).rjust(3, '0')
 
     @property
     def args(self):
@@ -28,22 +27,27 @@ class Job():
         return args_str
 
 
-
-
-
 class JobLauncher():
     def __init__(self):
+        # configurable stuff
+        self.user = 'fr_ga52'
+        self.max_jobs = 3
+        self.max_running_jobs = 2
+        self.par_bounds = {
+            'aplus': (.005, .5), 
+            'aminus': (0., 1.),
+            'aversion' : (0., 1.),
+            'wmax': (1.5., 3.),
+            }
+        # stuff that can remain fixed
         self.launcher_dir = os.path.dirname(os.path.realpath(__file__))
         self.jobs_dir = os.path.join(self.launcher_dir, 'jobs')
         self.run_job_script_path = os.path.join(self.launcher_dir, 'run_job.py')
-        self.jobs = list()
-        self.max_running_jobs = 4
-        self.optimizer = BayesianOptimization(
-            f=None,
-            pbounds={'x': (-2, 2), 'y': (-3, 3)},
-            verbose=2,
-            random_state=1)
+        self.optimizer = BayesOptim(f=None, pbounds=self.par_bounds, verbose=2, random_state=1)
         self.utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
+        logger = JSONLogger(path=os.path.join(self.launcher_dir, 'logger.json'))
+        self.optimizer.subscribe(Events.OPTMIZATION_STEP, logger)
+        self.jobs = list()
 
     @property
     def n_jobs(self):
@@ -51,7 +55,42 @@ class JobLauncher():
 
     @property
     def n_jobs_running(self):
-        return np.sum([job.status=='Running' or job.status=='Idle' for job in self.jobs])
+        cmd = f'showq -u {self.user} | grep ^Total.jobs:'
+        cmd_out = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+        jobs_running = cmd_out.stdout.decode('utf8').strip().split()[-1]
+        return int(jobs_running)
+
+    def run_optimization(self):
+        for i in range(self.max_jobs):
+            print(f'Starting job number {i}')
+            submited = False
+            while not submited:
+                self.read_results()
+                if self.max_running_jobs < self.n_jobs_running:
+                    self.launch_new_job()
+                    submited = True
+                    print('Submited!')
+                    sleept = 10
+                else:
+                    print(f'Too many jobs already running.')
+                    sleept = 120
+                print(f'Going to sleep for {sleept} seconds')
+                time.sleep(sleept)
+            print('Best job so far', self.optimizer.max)
+            
+    def read_results(self):
+        res_files_pattern = os.path.join(self.jobs_dir, 'job_*.result')
+        for res_file in glob(res_files_pattern):
+            # read result file
+            job_fo = open(res_file, 'r')
+            result = float(job_fo.readline())
+            job_fo.close
+            #os.remove(res_file)
+            # update job list
+            job_id = int(res_file.split('.')[0].split('_')[1])
+            self.jobs[job_id].result = result
+            # register result in the optimizer
+            self.optimizer.register(params=self.jobs[job_id].params, target=result)
 
     def launch_new_job(self):
         new_job = Job(
@@ -77,59 +116,15 @@ class JobLauncher():
         job_fo.write('module load system/modules/testing\n')
         job_fo.write('module load neuro/nest/2.16.0-python-3.7.0\n')
         job_fo.write('\n')
-        job_fo.write(f'mpirun python {self.run_job_script_path} {job.args}\n')
+        job_fo.write(f'mpirun python {self.run_job_script_path} {job.name} {self.jobs_dir} {job.args}\n')
         job_fo.close()
         return job_script_path
     
     def run_msub(self, script_path):
-        result = subprocess.run(['msub', script_path], stdout=subprocess.PIPE)
-        nemo_id = result.stdout.decode('utf8').strip()
+        msub_out = subprocess.run(['msub', script_path], stdout=subprocess.PIPE)
+        nemo_id = msub_out.stdout.decode('utf8').strip()
         return nemo_id
 
-    def update_job_states(self):
-        for job in self.jobs:
-            cmd = f'checkjob {job.nemo_id} | grep ^State'
-            result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
-            job.status = result.stdout.decode('utf8').strip().split()[1]
-
-    def run_optimization()
-
-
-
-        
-
-
-
-
-
-    
-    
-    
-
-
-
-
-
-
-
-# Let's start by definying our function, bounds, and instanciating an optimization object.
-def black_box_function(x, y):
-    return -x ** 2 - (y - 1) ** 2 + 1
-
-
-
-
-
-
-for _ in range(2):
-    next_point = optimizer.suggest(utility)
-    target = black_box_function(**next_point)
-    optimizer.register(params=next_point, target=target)
-    print(target, next_point)
-
-print('max', optimizer.max)
-
-
-for i in range(10):
-    next_point_to_probe = optimizer.suggest(utility)
-    print("Next point to probe is:", next_point_to_probe)
+if __name__ == '__main__':
+    jlauncher = JobLauncher()
+    jlauncher.run_optimization()
