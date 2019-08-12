@@ -10,7 +10,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--aplus', default=.1, type=float)
     parser.add_argument('--aminus', default=.15, type=float)
-    parser.add_argument('--wmax', default=60., type=float)
+    parser.add_argument('--wmax', default=3., type=float)
     parser.add_argument('--aversion', default=0., type=float)
     args = parser.parse_args()
     
@@ -24,10 +24,10 @@ if __name__ == '__main__':
     av = True if args.aversion > .5 else False
 
     # Run normal conditioning
-    success_history = exp.train_brain(n_trials=150, aversion=av, full_io=False)
+    success_history = exp.train_brain(n_trials=1, aversion=av, full_io=False)
     result = np.sum(success_history[-100:])
     # Run reversal learning
-    success_history = exp.train_brain(n_trials=150, aversion=av, full_io=False, rev_learn=True)
+    success_history = exp.train_brain(n_trials=1, aversion=av, full_io=False, rev_learn=True)
     result += np.sum(success_history[-100:])
 
     # Write results to file

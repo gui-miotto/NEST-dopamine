@@ -22,7 +22,7 @@ class Job():
     @property
     def args(self):
         args_str = ''
-        for arg_key, arg_val in self.args.items():
+        for arg_key, arg_val in self.pars.items():
             args_str += '--' + arg_key + ' ' + str(arg_val) + ' '
         return args_str
 
@@ -37,7 +37,7 @@ class JobLauncher():
             'aplus': (.005, .5), 
             'aminus': (0., 1.),
             'aversion' : (0., 1.),
-            'wmax': (1.5., 3.),
+            'wmax': (1.5, 3.),
             }
         # stuff that can remain fixed
         self.launcher_dir = os.path.dirname(os.path.realpath(__file__))
@@ -55,7 +55,7 @@ class JobLauncher():
 
     @property
     def n_jobs_running(self):
-        cmd = f'showq -u {self.user} | grep ^Total.jobs:'
+        cmd = f'showq -u {self.user} | grep ^Total.job'
         cmd_out = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
         jobs_running = cmd_out.stdout.decode('utf8').strip().split()[-1]
         return int(jobs_running)
@@ -66,7 +66,7 @@ class JobLauncher():
             submited = False
             while not submited:
                 self.read_results()
-                if self.max_running_jobs < self.n_jobs_running:
+                if self.n_jobs_running < self.max_running_jobs:
                     self.launch_new_job()
                     submited = True
                     print('Submited!')
@@ -105,8 +105,8 @@ class JobLauncher():
         job_fo = open(job_script_path, 'w')
         job_fo.write('#!/bin/bash\n')
         job_fo.write('\n')
-        job_fo.write('#MSUB -l nodes=5:ppn=20\n')
-        job_fo.write('#MSUB -l walltime=24:00:00\n')
+        job_fo.write('#MSUB -l nodes=1:ppn=20\n')
+        job_fo.write('#MSUB -l walltime=12:00:00\n')
         job_fo.write('#MSUB -l pmem=6gb\n')
         job_fo.write('#MSUB -m bea -M alessang@tf.uni-freiburg.de\n')
         job_fo.write('#MSUB -v MPIRUN_OPTIONS="--bind-to core --map-by core -report-bindings"\n')
