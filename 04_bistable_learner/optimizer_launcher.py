@@ -42,7 +42,7 @@ class JobLauncher():
         # stuff that can remain fixed
         self.launcher_dir = os.path.dirname(os.path.realpath(__file__))
         self.jobs_dir = os.path.join(self.launcher_dir, 'jobs')
-        self.run_job_script_path = os.path.join(self.launcher_dir, 'run_job.py')
+        self.run_job_script_path = os.path.join(self.launcher_dir, 'optimizer_run_job.py')
         self.optimizer = BayesOptim(f=None, pbounds=self.par_bounds, verbose=2, random_state=1)
         self.utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
         logger = JSONLogger(path=os.path.join(self.launcher_dir, 'logger.json'))

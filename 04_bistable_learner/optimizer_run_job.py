@@ -1,5 +1,4 @@
 import sys, argparse
-sys.path.insert(1, '.')  # hate to do that, but...
 from SpikingBGRL import Experiment
 
 if __name__ == '__main__':
