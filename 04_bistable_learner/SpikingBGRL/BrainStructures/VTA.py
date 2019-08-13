@@ -26,17 +26,18 @@ class VTA(BaseBrainStructure):
             #'Wmin' : 0., # Default 0. # Minimal synaptic weight
             #'vt' : volt_DA[0], # Volume transmitter will be assigned later on
             }
-        self.max_salience = 10  # integer greater than 0. Number of spikes added or subtracted to 
+        self.max_salience = 20  # integer greater than 0. Number of spikes added or subtracted to 
                                 # the baseline in the face of rewarding or aversive events 
                                 # (respectively)
         self.reward_size_ = self.max_salience
         self.aversion_size_ = 0
+        self.memory = 30  # How many trials is taken into account to calculate the salience size
+        self.degree = 1. / 3.  #TODO: delete after tunning
         
 
     def adjust_salience_size(self, success_history):
-        relevant_trials = 30  # Just the last trials are taken into account
-        recent_successes = np.sum(success_history[-relevant_trials:])
-        failure_rate = (relevant_trials - recent_successes) / relevant_trials
+        recent_successes = np.sum(success_history[-self.memory:])
+        failure_rate = (self.memory - recent_successes) / self.memory
 
         # If failure rate is no better than chance, use max_salience and zero
         if failure_rate >= .5:
@@ -44,7 +45,7 @@ class VTA(BaseBrainStructure):
             self.aversion_size_ = 0
         # Otherwise adjust salience gradually proportianally to the cubic root of the failure rate
         else:
-            salience_mult = (2. * failure_rate) ** (1. / 3.)
+            salience_mult = (2. * failure_rate) ** self.degree
             self.reward_size_ = round(salience_mult * self.max_salience)
             self.aversion_size_ = round((1. - salience_mult) * self.max_salience)
             # round() returns an integer if ndigits is omitted

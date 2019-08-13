@@ -36,8 +36,9 @@ class JobLauncher():
         self.par_bounds = {
             'aplus': (.005, .5),
             'aminus': (0., 1.),
-            'aversion' : (0., 1.),
             'wmax': (1.5, 3.),
+            'degree' : (.25, 2.),
+            'memory' : (20, 50),
             }
         # stuff that can remain fixed
         self.launcher_dir = os.path.dirname(os.path.realpath(__file__))
@@ -70,6 +71,7 @@ class JobLauncher():
             while not submited:
                 self.read_results()
                 if self.n_jobs_running < self.max_running_jobs:
+                    print('DEBUG: before launch new job')  #TODO: delete after debug
                     self.launch_new_job()
                     submited = True
                     print('Submitted!')

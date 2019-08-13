@@ -11,7 +11,8 @@ if __name__ == '__main__':
     parser.add_argument('--aplus', default=.1, type=float)
     parser.add_argument('--aminus', default=.15, type=float)
     parser.add_argument('--wmax', default=3., type=float)
-    parser.add_argument('--aversion', default=0., type=float)
+    parser.add_argument('--degree', default=1./3., type=float)
+    parser.add_argument('--memory', default=30., type=float)
     args = parser.parse_args()
     
     # Build experiment
@@ -21,13 +22,14 @@ if __name__ == '__main__':
     exp.brain.vta.DA_pars['A_plus'] = args.aplus * exp.brain.vta.DA_pars['weight']
     exp.brain.vta.DA_pars['A_minus'] = args.aminus * exp.brain.vta.DA_pars['weight']
     exp.brain.vta.DA_pars['Wmax'] = args.wmax * exp.brain.vta.DA_pars['weight']
-    av = True if args.aversion > .5 else False
+    exp.brain.vta.degree = args.degree
+    exp.brain.vta.memory = round(args.memory)
 
     # Run normal conditioning
-    success_history = exp.train_brain(n_trials=150, aversion=av, full_io=False)
+    success_history = exp.train_brain(n_trials=150, full_io=False)
     result = np.sum(success_history[-100:])
     # Run reversal learning
-    success_history = exp.train_brain(n_trials=150, aversion=av, full_io=False, rev_learn=True)
+    success_history = exp.train_brain(n_trials=150, full_io=False, rev_learn=True)
     result += np.sum(success_history[-100:])
 
     # Write results to file

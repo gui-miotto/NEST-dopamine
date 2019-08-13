@@ -1,12 +1,12 @@
 import os
+from itertools import product
+from collections import defaultdict
 import numpy as np
+from scipy.signal import butter, lfilter
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, FormatStrFormatter
-from itertools import product
-from collections import defaultdict
 from SpikingBGRL.DataIO.Reader import Reader
-
 
 def get_raster_data(events, gids=None, shift_senders=False, tmin=None, tmax=None):
     senders = events['senders']
@@ -109,7 +109,7 @@ def build_one_trial_plot(figs_dir, data, trial):
         plt.xlabel('weight')
         plt.legend(loc='upper center')
 
-    # Histogram: Mean weight between cortex and left striatum
+    # Histogram: Mean weight between cortex and striatum subpopulations
     def pop_to_pop_histogram(target, position):
         plt.subplot(n_rows, n_cols, position)
         plt.title(f'Cortex to {target} striatum weights')
@@ -174,7 +174,7 @@ def build_experiment_plot(figs_dir, data):
         'str_fr' : (9, 10),
         'w_pop_to_left' : (3, 4),
         'w_pop_to_right' : (7, 8),
-        'act_selec' : (11, 12),
+        'act_selec2' : (11, 12),
     }
 
     # Difference on decision spikes counts
@@ -192,7 +192,7 @@ def build_experiment_plot(figs_dir, data):
         reg_line = np.poly1d(np.polyfit(trials, data.syn_rescal_factor, 1))
         plt.plot(trials, reg_line(trials), label='lin reg')
         plt.legend()
-        plt.ylim(.9, 1.1)
+        #plt.ylim(.9, 1.1)
         plt.xlabel('trials')
         plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
 
@@ -212,10 +212,12 @@ def build_experiment_plot(figs_dir, data):
         plt.subplot(n_rows, n_cols, plot_grid['str_fr'])
         plt.title('Striatum firing rates')
         n_events = defaultdict(list)
+        #filter_numer, filter_denom = butter(5, .8)
         for pop in ['left', 'right']:
             for events in data.events:
                 n_events[pop].append(len(events[pop]['times']))
             frs = np.array(n_events[pop]) / data.striatum_N[pop] / data.trial_duration * 1000.
+            #frs = lfilter(filter_numer, filter_denom, frs)
             plt.plot(trials, frs, label=pop)
         n_events_all = (np.array(n_events['left']) + np.array(n_events['right']))
         frs_all = n_events_all / data.striatum_N['ALL'] / data.trial_duration * 1000.
@@ -238,7 +240,7 @@ def build_experiment_plot(figs_dir, data):
     if 'w_pop_to_right' in plot_grid.keys():
         pop_to_pop_weight_plot('right', plot_grid['w_pop_to_right'])
 
-    # Probability of action selection
+    # Probability of action selection (original version)
     if 'act_selec' in plot_grid.keys():
         plt.subplot(n_rows, n_cols, plot_grid['act_selec'])
         plt.title('Probability of correct action selection')
@@ -251,6 +253,19 @@ def build_experiment_plot(figs_dir, data):
         plt.ylim(-.05, 1.05)
         plt.xlabel('trial')
         plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
+    
+    # Probability of action selection (new version)
+    if 'act_selec2' in plot_grid.keys():
+        plt.subplot(n_rows, n_cols, plot_grid['act_selec2'])
+        plt.title('Probability of correct action selection')
+        prob_sucess, bin_size = [], 30
+        for i in range(len(data.success)):
+            suc_slice = data.success[:i+1][-bin_size:]
+            prob_sucess.append(np.sum(suc_slice) / len(suc_slice))
+        plt.plot(trials, prob_sucess)
+        plt.ylim(-.05, 1.05)
+        plt.xlabel('trial')
+        plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Save figure
     fig_file = 'experiment_overview.png'
@@ -260,9 +275,8 @@ def build_experiment_plot(figs_dir, data):
 
 
 if __name__ == '__main__':
-    #data_dir = '../../results/incumbent_reversal'
-    #data_dir = '../../results/mini'
-    data_dir = '/tmp/learner'
+    data_dir = '../../results/incumbent_reversal'
+    #data_dir = '/tmp/learner'
     figs_dir = os.path.join(data_dir, 'plots')
     if not os.path.exists(figs_dir):
         os.mkdir(figs_dir)
@@ -270,7 +284,7 @@ if __name__ == '__main__':
 
     import time
     beg = time.time()
-    #build_trial_plots(figs_dir, data, False)
+    build_trial_plots(figs_dir, data, False)
     print(time.time() - beg)
 
     build_experiment_plot(figs_dir, data)
