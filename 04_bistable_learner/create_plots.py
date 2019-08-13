@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, FormatStrFormatter
 from itertools import product
@@ -27,8 +28,14 @@ def get_raster_data(events, gids=None, shift_senders=False, tmin=None, tmax=None
 
 
 def build_trial_plots(figs_dir, data):
-    for trial in range(data.num_of_trials):
-        build_one_trial_plot(figs_dir, data, trial)
+    # If debuging it may be a good idea to NOT run it in parallel
+    run_parallel = False
+    if run_parallel:
+        Parallel(n_jobs=-1)(delayed(
+            build_one_trial_plot)(figs_dir, data, trial) for trial in range(data.num_of_trials))
+    else:
+        for trial in range(data.num_of_trials):
+            build_one_trial_plot(figs_dir, data, trial)
 
 
 def build_one_trial_plot(figs_dir, data, trial):
@@ -253,15 +260,23 @@ def build_experiment_plot(figs_dir, data):
 
 
 if __name__ == '__main__':
+    data_dir = '../../results/local_incumbent_rewardsize'
     #data_dir = '../../results/mini'
-    data_dir = '/tmp/learner'
+    #data_dir = '/tmp/learner'
     figs_dir = os.path.join(data_dir, 'plots')
     if not os.path.exists(figs_dir):
         os.mkdir(figs_dir)
     data = Reader().read(data_dir)
 
+    import time
+    beg = time.time()
+
     build_trial_plots(figs_dir, data)
+    print(time.time() - beg)
+    
     build_experiment_plot(figs_dir, data)
+
+    
 
 
 
