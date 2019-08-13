@@ -18,9 +18,9 @@ class VTA(BaseBrainStructure):
             'tau_n' : self.tau_n, # Default 200.; Time constant of dopaminergic trace in ms
             'b' : 1. / self.dt,  # Default 0.; Dopaminergic baseline concentration
             'n' : 1. / self.dt + 2.5 / self.tau_n, # Default 0.; Initial dopamine concentration
-            'A_plus' : .1 * J_E,  # Default 1.; Amplitude of weight change for facilitation
-            'A_minus' : .15 * J_E,  # Default 1.5; Amplitude of weight change for depression
-            'Wmax' : 3. * J_E, # Maximal synaptic weight  
+            'A_plus' : .1643768 * J_E,  # Default 1.; Amplitude of weight change for facilitation
+            'A_minus' : .1343805 * J_E,  # Default 1.5; Amplitude of weight change for depression
+            'Wmax' : 2.9466384 * J_E, # Maximal synaptic weight  
             #'tau_c' : 1000., # Default 1000.,  # Time constant of eligibility trace in ms
             #'tau_plus' : 20.0, #  Default 20.; STDP time constant for facilitation in ms
             #'Wmin' : 0., # Default 0. # Minimal synaptic weight

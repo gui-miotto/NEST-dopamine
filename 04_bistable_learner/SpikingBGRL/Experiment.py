@@ -21,7 +21,7 @@ class Experiment():
             Master seed for EVERYTHING. Runs with the same seed and number of virtual processes
             should yeld the same results. By default 42
         """
-        self.debug = True
+        self.debug = False
         
         # Experiment parameters
         self.trial_duration = 1100. if self.debug else 6000.  # Trial duration

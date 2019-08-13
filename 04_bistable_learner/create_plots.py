@@ -260,7 +260,7 @@ def build_experiment_plot(figs_dir, data):
 
 
 if __name__ == '__main__':
-    data_dir = '../../results/local_incumbent_rewardsize'
+    data_dir = '../../results/incumbent_reversal'
     #data_dir = '../../results/mini'
     #data_dir = '/tmp/learner'
     figs_dir = os.path.join(data_dir, 'plots')
@@ -270,7 +270,6 @@ if __name__ == '__main__':
 
     import time
     beg = time.time()
-
     build_trial_plots(figs_dir, data)
     print(time.time() - beg)
 
