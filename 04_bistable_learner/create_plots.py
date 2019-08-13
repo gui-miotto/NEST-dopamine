@@ -29,7 +29,7 @@ def get_raster_data(events, gids=None, shift_senders=False, tmin=None, tmax=None
 
 def build_trial_plots(figs_dir, data):
     # If debuging it may be a good idea to NOT run it in parallel
-    run_parallel = False
+    run_parallel = True
     if run_parallel:
         Parallel(n_jobs=-1)(delayed(
             build_one_trial_plot)(figs_dir, data, trial) for trial in range(data.num_of_trials))
@@ -273,7 +273,7 @@ if __name__ == '__main__':
 
     build_trial_plots(figs_dir, data)
     print(time.time() - beg)
-    
+
     build_experiment_plot(figs_dir, data)
 
     
