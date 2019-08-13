@@ -21,7 +21,7 @@ class Experiment():
             Master seed for EVERYTHING. Runs with the same seed and number of virtual processes
             should yeld the same results. By default 42
         """
-        self.debug = False
+        self.debug = True
         
         # Experiment parameters
         self.trial_duration = 1100. if self.debug else 6000.  # Trial duration
@@ -88,7 +88,6 @@ class Experiment():
         # Simulate trials
         trials_wall_clock_time = list()
         for trial in range(1, n_trials +1):
-            self.global_trial_ += 1
             self.trial_begin_ = nest.GetKernelStatus('time')
             if self.rank0:
                 print(f'Simulating trial {trial} of {n_trials}:')
@@ -115,7 +114,7 @@ class Experiment():
             self.brain.reset_spike_detectors()
 
             # Print some useful monitoring information
-            n_succ = np.sum(self.success_)
+            n_suc = np.sum(self.success_)
             if self.rank0:
                 print(f'Trial simulation concluded in {wall_clock_time:.1f} seconds')
                 print(f'End-of-trial weight change: {self.brain.syn_change_factor_:.5f}')
@@ -123,7 +122,7 @@ class Experiment():
                     print(f'{color["green"]}Correct action{color["none"]}')
                 else:
                     print(f'{color["red"]}Wrong action{color["none"]}')
-                print(f'{n_succ} correct actions so far ({n_succ * 100. / trial:.2f}%)')
+                print(f'{n_suc} correct actions so far ({n_suc * 100. / len(self.success_):.2f}%)')
                 mean_wct = np.mean(trials_wall_clock_time)
                 print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')
                 remaining_wct = round(mean_wct * (n_trials - trial))
@@ -163,7 +162,6 @@ class Experiment():
             print(f'Synaptic change during warmup: {syn_change:.5f}\n')
         
         # Some variable initiation
-        self.global_trial_ = 0
         self.success_ = list()
         self.brain_initiated = True
 

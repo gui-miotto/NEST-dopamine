@@ -72,7 +72,7 @@ class JobLauncher():
                 if self.n_jobs_running < self.max_running_jobs:
                     self.launch_new_job()
                     submited = True
-                    print('Submited!')
+                    print('Submitted!')
                     sleept = 30
                 else:
                     print(f'Too many jobs already running.')
@@ -110,13 +110,12 @@ class JobLauncher():
             self.jobs[job_id].result = result
             # register result in the optimizer
             self.optimizer.register(params=self.jobs[job_id].pars, target=result)
-            print('registrei', self.jobs[job_id].pars, result)
 
     def launch_new_job(self):
         new_job = Job(
             local_id=self.n_jobs,
             pars=self.optimizer.suggest(self.utility))
-        script_path= self.create_batchjob(new_job)
+        script_path = self.create_batchjob(new_job)
         new_job.nemo_id = self.run_msub(script_path)
         self.jobs.append(new_job)
 
@@ -148,4 +147,3 @@ class JobLauncher():
 if __name__ == '__main__':
     jlauncher = JobLauncher()
     jlauncher.run_optimization()
-    

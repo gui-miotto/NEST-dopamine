@@ -4,7 +4,7 @@ class ExperimentResults(object):
 
     def __init__(self, exp):
         self.rank = exp.mpi_rank
-        self.trial = exp.global_trial_
+        self.trial = len(exp.success_)
         self.trial_begin = exp.trial_begin_
         self.cue = exp.cue_
         self.reward_size = exp.brain.vta.reward_size_

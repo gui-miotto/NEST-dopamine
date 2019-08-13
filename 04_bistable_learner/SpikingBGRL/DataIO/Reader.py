@@ -16,6 +16,7 @@ class Reader():
         self.trial_begin = []
         self.lminusr = []
         self.success = []
+        self.reward_size = []
         self.events = []
         self.weights_mean = []
         self.weights_hist = []
@@ -64,6 +65,7 @@ class Reader():
             self.trial_begin.append(ER0.trial_begin)
             self.lminusr.append(ER0.lminusr)
             self.success.append(ER0.success)
+            self.reward_size.append(ER0.reward_size)
             self.syn_rescal_factor.append(ER0.syn_change_factor)
             events = {key : {'senders':np.array([]), 'times':np.array([])} for key in ER0.events}
             weights_mean = weights_count[0] * 0
