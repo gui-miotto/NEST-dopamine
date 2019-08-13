@@ -30,20 +30,23 @@ class VTA(BaseBrainStructure):
                                 # the baseline in the face of rewarding or aversive events 
                                 # (respectively)
         self.reward_size_ = self.max_salience
+        self.aversion_size_ = 0
         
 
-    def adjust_reward_size(self, success_history):
+    def adjust_salience_size(self, success_history):
         relevant_trials = 30  # Just the last trials are taken into account
         recent_successes = np.sum(success_history[-relevant_trials:])
         failure_rate = (relevant_trials - recent_successes) / relevant_trials
 
-        # If failure rate is no better than chance, use max_salience
+        # If failure rate is no better than chance, use max_salience and zero
         if failure_rate >= .5:
             self.reward_size_ = self.max_salience
-        # Otherwise reduce salience gradually proportianally to the cubic root of the failure rate
+            self.aversion_size_ = 0
+        # Otherwise adjust salience gradually proportianally to the cubic root of the failure rate
         else:
-            salience_mult = (2. * failure_rate) ** (1 / 3)
-            self.reward_size_ = round(salience_mult * self.max_salience) 
+            salience_mult = (2. * failure_rate) ** (1. / 3.)
+            self.reward_size_ = round(salience_mult * self.max_salience)
+            self.aversion_size_ = round((1. - salience_mult) * self.max_salience)
             # round() returns an integer if ndigits is omitted
 
 
@@ -85,7 +88,7 @@ class VTA(BaseBrainStructure):
             elif drive_type == 'aversive':  # i.e. the baseline with some missing spikes
                 spike_times = np.concatenate((
                     np.arange(begin, delivery - .5 * self.dt, self.dt),  
-                    np.arange(delivery + (self.dt * self.max_salience), end, self.dt)
+                    np.arange(delivery + (self.dt * self.aversion_size_), end, self.dt)
                 ))
         
         spike_times = np.round(spike_times, decimals=1)

@@ -92,8 +92,8 @@ class Experiment():
             if self.rank0:
                 print(f'Simulating trial {trial} of {n_trials}:')
 
-            # Adjust the amplitude of the dopamine bursts
-            self.brain.vta.adjust_reward_size(self.success_)
+            # Adjust the amplitude of the dopamine bursts/dips
+            self.brain.vta.adjust_salience_size(self.success_)
             
             # Simulate one trial and measure time taken to do it
             trial_start = time()
@@ -180,7 +180,7 @@ class Experiment():
         self.lminusr_ = decision_spikes['left'] - decision_spikes['right']
         success = (self.cue_ == 'low' and self.lminusr_ > 0) or \
                   (self.cue_ == 'high' and self.lminusr_ < 0)
-        success = not success if rev_learn else success
+        success = not success and self.lminusr_ if rev_learn else success
         self.success_.append(success)
         
         if self.lminusr_ == 0 or baseline_only:  # just keep the baseline  #TODO I think this wont almost never happen anymore. Change the criterion?

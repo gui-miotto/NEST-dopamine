@@ -27,9 +27,8 @@ def get_raster_data(events, gids=None, shift_senders=False, tmin=None, tmax=None
     return senders, times
 
 
-def build_trial_plots(figs_dir, data):
+def build_trial_plots(figs_dir, data, run_parallel=True):
     # If debuging it may be a good idea to NOT run it in parallel
-    run_parallel = True
     if run_parallel:
         Parallel(n_jobs=-1)(delayed(
             build_one_trial_plot)(figs_dir, data, trial) for trial in range(data.num_of_trials))
@@ -201,9 +200,10 @@ def build_experiment_plot(figs_dir, data):
     if 'salience' in plot_grid.keys():
         plt.subplot(n_rows, n_cols, plot_grid['salience'])
         plt.title('Salience size')
-        plt.plot(trials, data.reward_size)
-        #plt.legend()
-        plt.ylim(bottom=0.)
+        plt.plot(trials, data.reward_size, label='rewarding')
+        plt.plot(trials, data.aversion_size, label='aversive')
+        plt.legend()
+        #plt.ylim(bottom=-.1)
         plt.xlabel('trials')
         plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
 
@@ -260,9 +260,9 @@ def build_experiment_plot(figs_dir, data):
 
 
 if __name__ == '__main__':
-    data_dir = '../../results/incumbent_reversal'
+    #data_dir = '../../results/incumbent_reversal'
     #data_dir = '../../results/mini'
-    #data_dir = '/tmp/learner'
+    data_dir = '/tmp/learner'
     figs_dir = os.path.join(data_dir, 'plots')
     if not os.path.exists(figs_dir):
         os.mkdir(figs_dir)
@@ -270,7 +270,7 @@ if __name__ == '__main__':
 
     import time
     beg = time.time()
-    build_trial_plots(figs_dir, data)
+    #build_trial_plots(figs_dir, data, False)
     print(time.time() - beg)
 
     build_experiment_plot(figs_dir, data)
