@@ -12,7 +12,7 @@ class Experiment():
     Class members whose names are followed by a trailing _ (e.g. self.success_) are updated at every
     trial, the others are constant throughout the whole experiment.
     """
-    def __init__(self, seed=42):
+    def __init__(self, seed=42, debug_mode=False):
         """Constructor
         
         Parameters
@@ -21,7 +21,7 @@ class Experiment():
             Master seed for EVERYTHING. Runs with the same seed and number of virtual processes
             should yeld the same results. By default 42
         """
-        self.debug = False
+        self.debug = debug_mode
         
         # Experiment parameters
         self.trial_duration = 1100. if self.debug else 6000.  # Trial duration
@@ -176,14 +176,18 @@ class Experiment():
         nest.Simulate(self.eval_time_window)
         decision_spikes = self.brain.striatum.count_decision_spikes()
 
-        # According to the selected action, deliver the appropriate DA response
+        # Check if the action the correct one
         self.lminusr_ = decision_spikes['left'] - decision_spikes['right']
-        success = (self.cue_ == 'low' and self.lminusr_ > 0) or \
-                  (self.cue_ == 'high' and self.lminusr_ < 0)
-        success = not success and self.lminusr_ if rev_learn else success
+        if self.lminusr_ == 0:
+            success = False
+        else:
+            success = (self.cue_ == 'low' and self.lminusr_ > 0) or \
+                      (self.cue_ == 'high' and self.lminusr_ < 0)
+            success = not success if rev_learn else success
         self.success_.append(success)
         
-        if self.lminusr_ == 0 or baseline_only:  # just keep the baseline  #TODO I think this wont almost never happen anymore. Change the criterion?
+        # According to the action outcome, deliver the appropriate DA response
+        if self.lminusr_ == 0 or baseline_only:  # just keep the baseline  #TODO I think lminusr_ == 0 will almost never happen anymore. Change the criterion?
             self.brain.vta.set_drive(length=self.tail_of_trial, drive_type='baseline')
         else:
             wait_time = self.max_DA_wait_time - (abs(self.lminusr_) - 1) * 100.  #TODO: calibrate this

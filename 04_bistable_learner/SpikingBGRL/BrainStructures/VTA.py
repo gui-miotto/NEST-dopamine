@@ -43,11 +43,12 @@ class VTA(BaseBrainStructure):
         if failure_rate >= .5:
             self.reward_size_ = self.max_salience
             self.aversion_size_ = 0
-        # Otherwise adjust salience gradually proportianally to the cubic root of the failure rate
+        # Otherwise adjust salience gradually proportianally to the failure rate
         else:
-            salience_mult = (2. * failure_rate) ** self.degree
-            self.reward_size_ = round(salience_mult * self.max_salience)
-            self.aversion_size_ = round((1. - salience_mult) * self.max_salience)
+            reward_mult = (2. * failure_rate) ** self.degree
+            aversi_mult = (1. - 2. * failure_rate) ** self.degree
+            self.reward_size_ = round(reward_mult * self.max_salience)
+            self.aversion_size_ = round(aversi_mult * self.max_salience)
             # round() returns an integer if ndigits is omitted
 
 
