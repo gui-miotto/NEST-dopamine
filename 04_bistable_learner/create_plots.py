@@ -284,7 +284,7 @@ if __name__ == '__main__':
 
     import time
     beg = time.time()
-    build_trial_plots(figs_dir, data, False)
+    build_trial_plots(figs_dir, data, True)
     print(time.time() - beg)
 
     build_experiment_plot(figs_dir, data)

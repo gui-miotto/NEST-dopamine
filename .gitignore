@@ -110,6 +110,8 @@ venv.bak/
 *.png
 *.data
 *.pdf
-
+*.par
+*.res
+*.json
 
 
