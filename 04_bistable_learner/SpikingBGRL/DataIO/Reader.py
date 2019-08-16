@@ -27,6 +27,7 @@ class Reader():
     def read(self, exp_dir):
         weights_count, weight_count_total = self._read_methods(exp_dir)
         self._read_trials(exp_dir, weights_count, weight_count_total)
+        self._read_snapshot(exp_dir)
         return self
 
 
@@ -94,4 +95,13 @@ class Reader():
             self.events.append(events)
             self.weights_mean.append(weights_mean / weight_count_total)
             self.weights_hist.append(weights_hist)
+    
+
+    def _read_snapshot(self, exp_dir):
+        self.snapshot = list()
+        #And then we loop through the different MPI processes outputs
+        snapshot_paths = os.path.join(exp_dir, 'snapshot-rank-*.data')
+        for sp in glob(snapshot_paths):
+            SS = pickle.load(open(sp, 'rb'))
+            self.snapshot += SS.snapshot
     

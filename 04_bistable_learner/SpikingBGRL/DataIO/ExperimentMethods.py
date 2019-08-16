@@ -10,6 +10,8 @@ class ExperimentMethods():
         self.eval_time_window = exp.eval_time_window
         self.wmax = exp.brain.vta.DA_pars['Wmax']
         self.neurons = {
+            'I' : exp.brain.cortex.neurons['I'],
+            'E' : exp.brain.cortex.neurons['E'],
             'E_rec' : exp.brain.cortex.neurons['E_rec'],
             'low' : exp.brain.cortex.neurons['low'],
             'high' : exp.brain.cortex.neurons['high'],

@@ -22,7 +22,7 @@ class Brain(BaseBrainStructure):
         super().__init__(**args)
 
         # Default neuron parameters
-        tauSyn = 0.5  # synaptic time constant in ms
+        tauSyn = .5  # synaptic time constant in ms
         self.neuron_params = {
                 "C_m": 250.,  # capacitance of membrane in in pF
                 "tau_m": 20.,  # time constant of membrane potential in ms
@@ -39,14 +39,18 @@ class Brain(BaseBrainStructure):
         self.syn_delay = 1.5  # synaptic delay in ms
         self.syn_change_factor_ = -1.
         
+        # MPI communication
+        self.mpi_comm = MPI.COMM_WORLD
+        self.mpi_rank = self.mpi_comm.Get_rank()
+        self.mpi_procs = self.mpi_comm.Get_size()
+
         # Kernel parameters
         self.dt = .1
         self.verbosity = 20
         self.kernel_pars = {
             'print_time' : False,
             'resolution' : self.dt,
-            #'local_num_threads' : multiprocessing.cpu_count(),
-            'local_num_threads' : 1,
+            'local_num_threads' : 1 if self.mpi_procs > 1 else multiprocessing.cpu_count(),
             'grng_seed' : master_seed,
             }
 
@@ -55,11 +59,6 @@ class Brain(BaseBrainStructure):
         self.striatum = Striatum(C_E=self.cortex.C['E'], J_I=self.cortex.J['I'], scale=self.scale)
         self.vta = VTA(dt=self.dt, J_E=self.J, syn_delay=self.syn_delay, scale=self.scale)
         self.structures = [self.cortex, self.striatum, self.vta]
-
-        # MPI communication
-        self.mpi_comm = MPI.COMM_WORLD
-        self.mpi_rank = self.mpi_comm.Get_rank()
-        self.mpi_procs = self.mpi_comm.Get_size()
 
     
     def _configure_kernel(self):
@@ -107,16 +106,16 @@ class Brain(BaseBrainStructure):
                 {'rule': 'fixed_indegree', 'indegree': self.cortex.C[source]},
                 'corticostriatal_synapse'
                 )
-        self.group_synapses_per_target(
+        self.group_synapses_per_target(  # For later use on synaptic scaling
             self.cortex.neurons['E'], self.striatum.neurons['ALL'], 'corticostriatal_synapse')
         
         # Get connections for later weight monitoring
         self.w_ind = ['low', 'high', 'E_rec', 'E']
         self.w_col = ['left', 'right', 'ALL']
         self.synapses = pd.DataFrame(index=self.w_ind, columns=self.w_col)
-        self.weights_count = deepcopy(self.synapses)
-        self.weights_mean_ = deepcopy(self.synapses)
-        self.weights_hist_ = deepcopy(self.synapses)
+        self.weights_count = deepcopy(self.synapses)  # number of synapses
+        self.weights_mean_ = deepcopy(self.synapses)  # average weight
+        self.weights_hist_ = deepcopy(self.synapses)  # weight histogram
         for source, target in product(self.w_ind, self.w_col):
             cnns = nest.GetConnections(self.cortex.neurons[source], self.striatum.neurons[target])
             self.synapses.loc[source, target] = cnns
@@ -145,6 +144,14 @@ class Brain(BaseBrainStructure):
 
 
     def get_total_weight_change(self):
+        """Calculates how much the total sum of plastic weights has increased/decreased in relation
+        to the initial (before trials) values. This helps monitoring network explosions/implosions.
+        
+        Returns
+        -------
+        [float]
+            initial_total_weight / current_total_weight ratio
+        """
         weights = nest.GetStatus(self.synapses.loc['E', 'ALL'], 'weight')
         total_weight = np.sum(weights, dtype='f')
         recvbuf = np.empty(self.mpi_procs, dtype='f') if self.mpi_rank == 0 else None
@@ -156,3 +163,17 @@ class Brain(BaseBrainStructure):
             change_factor = None
         change_factor = self.mpi_comm.bcast(change_factor, root=0)
         return change_factor
+
+
+    def store_network_snapshot(self):
+        all_neurons = self.cortex.neurons['ALL'] + self.striatum.neurons['ALL']
+        local_neurons = [ni['global_id'] for ni in nest.GetStatus(all_neurons) if ni['local']]
+        self.snapshot_ = list()
+        for cnn in nest.GetConnections(all_neurons, local_neurons):  # synapse info is store on the
+            cnn_info = nest.GetStatus([cnn])[0]                      # post synaptic side
+            self.snapshot_.append({
+                'source' : cnn_info['source'],
+                'target' : cnn_info['target'],
+                'weight' : cnn_info['weight'],
+                'delay' : cnn_info['delay'],
+            })

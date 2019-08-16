@@ -4,7 +4,7 @@ from mpi4py import MPI
 from time import time
 from datetime import timedelta
 from .BrainStructures import Brain
-from .DataIO import ExperimentResults, ExperimentMethods
+from .DataIO import ExperimentResults, ExperimentMethods, NetworkSnapshot
 
 class Experiment():
     """Class representing the instrumental conditioning of a brain. A experiment is sequence of 
@@ -127,6 +127,10 @@ class Experiment():
                 print(f'Average elapsed time per trial: {mean_wct:.1f} seconds')
                 remaining_wct = round(mean_wct * (n_trials - trial))
                 print(f'Expected remaining time: {timedelta(seconds=remaining_wct)}\n')
+        
+        if full_io:
+            self.brain.store_network_snapshot()
+            NetworkSnapshot(self).write(save_dir)
         
         return self.success_
 

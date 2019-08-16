@@ -66,12 +66,13 @@ def build_one_trial_plot(figs_dir, data, trial):
     # Format raster plot data
     raster_data, nsamp = dict(), 50 
     for i, (pop, gids) in enumerate(data.neurons.items()):
-        senders, times = get_raster_data(
-            data.events[trial][pop], 
-            gids=gids[:nsamp], 
-            shift_senders=True)
-        times -= data.trial_begin[trial]
-        raster_data[pop] = {'senders' : senders + i * nsamp, 'times' : times}
+        if pop in ['low', 'high', 'left', 'right', 'E_rec']:
+            senders, times = get_raster_data(
+                data.events[trial][pop], 
+                gids=gids[:nsamp], 
+                shift_senders=True)
+            times -= data.trial_begin[trial]
+            raster_data[pop] = {'senders' : senders + i * nsamp, 'times' : times}
     
     # Raster plot: decision period
     if 'raster_decision' in plot_grid.keys():
@@ -275,7 +276,7 @@ def build_experiment_plot(figs_dir, data):
 
 
 if __name__ == '__main__':
-    data_dir = '../../results/incumbent_reversal'
+    data_dir = '../../results/final_06'
     #data_dir = '/tmp/learner'
     figs_dir = os.path.join(data_dir, 'plots')
     if not os.path.exists(figs_dir):
@@ -284,7 +285,7 @@ if __name__ == '__main__':
 
     import time
     beg = time.time()
-    build_trial_plots(figs_dir, data, True)
+    build_trial_plots(figs_dir, data,run_parallel=True)
     print(time.time() - beg)
 
     build_experiment_plot(figs_dir, data)

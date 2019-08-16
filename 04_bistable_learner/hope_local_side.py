@@ -5,6 +5,7 @@ from bayes_opt import BayesianOptimization as BayesOptim
 from bayes_opt import UtilityFunction
 from bayes_opt.observer import JSONLogger
 from bayes_opt.event import Events
+from bayes_opt.util import load_logs
 
 
 class Job():
@@ -45,10 +46,11 @@ class LocalSide():
         self.res_files_pattern = os.path.join(local_finished_jobs_dir, 'job_*.res')
 
         # optimizer stuff
-        self.optimizer = BayesOptim(f=None, pbounds=par_bounds, verbose=2, random_state=1)
-        self.utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
-        logger = JSONLogger(path=os.path.join(my_dir, 'logger.json'))
+        self.optimizer = BayesOptim(f=None, pbounds=par_bounds, verbose=2, random_state=2)
+        load_logs(self.optimizer, logs=[os.path.join(my_dir, 'logger.json')])
+        logger = JSONLogger(path=os.path.join(my_dir, 'logger2.json'))
         self.optimizer.subscribe(Events.OPTMIZATION_STEP, logger)
+        self.utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
 
         self.jobs = list()
 
@@ -61,6 +63,7 @@ class LocalSide():
         for i in range(n_jobs):
             print(f'\nStarting job number {i+1}')
             next_job_pars = self.optimizer.suggest(self.utility)
+            print('Got new parameter sugestion')
             submitted = False
             while not submitted:
                 results_read = self.read_results()

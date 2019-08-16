@@ -12,9 +12,9 @@
 ##MSUB -l naccesspolicy=singlejob
 #MSUB -m bea -M alessang@tf.uni-freiburg.de
 #MSUB -v MPIRUN_OPTIONS="--bind-to core --map-by core -report-bindings"
-#MSUB -N incumbent_reversal
+#MSUB -N final_06
 
-TASKNAME=incumbent_reversal
+TASKNAME=final_06
 SCRIPTPATH=$HOME/code/$TASKNAME.py
 OUTDIR=$(ws_find learner)/$TASKNAME
 
